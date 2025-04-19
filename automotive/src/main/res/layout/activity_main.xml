@@ -5,7 +5,6 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main"
     android:animateLayoutChanges="true"
-    android:background="@color/black"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".MainActivity">
@@ -18,11 +17,12 @@
         android:id="@+id/imgBackground"
         android:layout_width="0dp"
         android:layout_height="0dp"
+        android:scaleType="centerCrop"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
-        android:background="#3F51B5"/>
+        android:background="@color/black"/>
     <androidx.media3.ui.PlayerView
         android:id="@+id/player_view"
         android:layout_width="0dp"
@@ -34,18 +34,19 @@
         app:layout_constraintEnd_toStartOf="@+id/albumImage"
         app:layout_constraintHorizontal_chainStyle="spread"
         app:layout_constraintHorizontal_weight="3"
-        app:show_buffering="when_playing"
+        app:show_buffering="never"
         app:use_controller="true"
         app:show_timeout="0"
         app:controller_layout_id="@layout/custom_player_controller"
         app:surface_type="surface_view"
         app:show_shuffle_button="true"
         app:show_subtitle_button="true"
-        app:animation_enabled="true"
+        app:animation_enabled="false"
         app:auto_show="true"
         app:resize_mode="fit"
-        app:use_artwork="true"
+        app:use_artwork="false"
         app:shutter_background_color="@android:color/transparent"
+
         app:default_artwork="@drawable/default_album_art" />
 
     <!-- ImageView (25% width) -->
@@ -53,12 +54,12 @@
         android:id="@+id/albumImage"
         android:layout_width="0dp"
         android:layout_height="match_parent"
-        android:layout_margin="8dp"
+        android:padding="24dp"
         android:contentDescription="@string/album_image"
-        android:padding="16dp"
-        tools:visibility="gone"
+        tools:visibility="visible"
         android:src="@drawable/default_album_art"
         android:visibility="visible"
+        android:background="#000"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toEndOf="@id/player_view"
@@ -68,14 +69,14 @@
     <!-- Loading spinner -->
     <ProgressBar
         android:id="@+id/loading_spinner"
-        style="?android:attr/progressBarStyleLarge"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:visibility="gone"
+        android:indeterminateTint="@color/white"
         android:layout_gravity="center"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintTop_toTopOf="@id/player_view"
+        app:layout_constraintBottom_toBottomOf="@id/player_view"
+        app:layout_constraintStart_toStartOf="@id/player_view"
+        app:layout_constraintEnd_toEndOf="@id/player_view" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

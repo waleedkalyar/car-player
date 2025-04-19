@@ -71,4 +71,6 @@ dependencies {
     implementation("io.coil-kt:coil:2.4.0")
 
     implementation("androidx.palette:palette:1.0.0")
+
+    implementation("jp.wasabeef:blurry:4.0.1")
 }

@@ -15,6 +15,7 @@ import android.graphics.RenderNode
 import android.graphics.Shader
 import android.graphics.SurfaceTexture
 import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Build
 
@@ -52,11 +53,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toDrawable
+import androidx.core.view.isInvisible
 import com.example.carplayer.databinding.ActivityMainBinding
+import com.example.carplayer.utils.toBitmap
+import jp.wasabeef.blurry.Blurry
 
 class MainActivity : AppCompatActivity() {
     private var _binding: ActivityMainBinding? = null
-    val binding get() =  _binding!!
+    val binding get() = _binding!!
     private var mediaController: MediaController? = null
     private var mediaControllerFuture: ListenableFuture<MediaController>? = null
 
@@ -97,14 +101,17 @@ class MainActivity : AppCompatActivity() {
 
 
     @OptIn(UnstableApi::class)
-    private fun connectToMediaSession() = with(binding)  {
+    private fun connectToMediaSession() = with(binding) {
 
-        playerView.defaultArtwork = ContextCompat.getDrawable(this@MainActivity, R.drawable.default_album_art)
+        // playerView.defaultArtwork = ContextCompat.getDrawable(this@MainActivity, R.drawable.default_album_art)
 
-        playerView.artworkDisplayMode = PlayerView.ARTWORK_DISPLAY_MODE_FIT
+        // playerView.artworkDisplayMode = PlayerView.ARTWORK_DISPLAY_MODE_FIT
 
 
-        val sessionToken = SessionToken(this@MainActivity, ComponentName(this@MainActivity, MyMediaService::class.java))
+        val sessionToken = SessionToken(
+            this@MainActivity,
+            ComponentName(this@MainActivity, MyMediaService::class.java)
+        )
 
         mediaControllerFuture = MediaController.Builder(this@MainActivity, sessionToken)
             .buildAsync()
@@ -131,7 +138,7 @@ class MainActivity : AppCompatActivity() {
                     }
 
                     override fun onIsLoadingChanged(isLoading: Boolean) {
-                       // loadingSpinner.visibility = if (isLoading) View.VISIBLE else View.GONE
+                        // loadingSpinner.visibility = if (isLoading) View.VISIBLE else View.GONE
                     }
 
                     @SuppressLint("UseKtx")
@@ -160,33 +167,21 @@ class MainActivity : AppCompatActivity() {
 
                                     if (drawable != null) {
                                         // Set artwork
-                                        playerView.defaultArtwork = drawable
+                                        // playerView.defaultArtwork = drawable
+
+                                        albumImage.setImageDrawable(drawable)
 
                                         // Extract dominant color from bitmap using Palette
                                         val bitmap = (drawable as BitmapDrawable).bitmap
                                         Palette.from(bitmap).generate { palette ->
-                                            val dominantColor = palette?.getDominantColor(Color.BLACK) ?: Color.BLACK
-                                            playerView.setBackgroundColor(dominantColor)
+                                            val dominantColor =
+                                                palette?.getDominantColor(Color.BLACK)
+                                                    ?: Color.BLACK
+                                            imgBackground.setBackgroundColor(dominantColor)
+                                            albumImage.setBackgroundColor(Color.TRANSPARENT)
 
-                                            // Create a solid color bitmap for blur background
-                                            val blurBitmap = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888)
-                                            val canvas = Canvas(blurBitmap)
-                                            canvas.drawColor(dominantColor)
-
-                                            // Apply blur and set as background
-//                                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-//                                                //val blurred =  blurBitmap.blur(context, radius = 20f)
-//                                                val drawableBlurred =
-//                                                    bitmap.toDrawable(context.resources)
-//                                                playerView.background = drawableBlurred
-//                                            } else {
-                                            playerView.setBackgroundColor(dominantColor)
-                                            // }
-
-
+                                            Blurry.with(this@MainActivity).radius(25).sampling(4).from(bitmap).into(imgBackground)
                                         }
-
-
 
 
                                     } else {
@@ -239,11 +234,16 @@ class MainActivity : AppCompatActivity() {
                             playerView.controllerShowTimeoutMs = 3000 // e.g., 3 seconds
                             playerView.controllerAutoShow = true
                             playerView.controllerHideOnTouch = true
+                            playerView.videoSurfaceView?.visibility = View.VISIBLE
                         } else if (hasAudio) {
                             // Maybe show album art, metadata, etc.
                             playerView.controllerShowTimeoutMs = 0
                             playerView.showController()
                             playerView.controllerHideOnTouch = false
+                            playerView.videoSurfaceView?.visibility = View.INVISIBLE
+                            playerView.setBackgroundColor(Color.TRANSPARENT)
+                            playerView.setShutterBackgroundColor(Color.TRANSPARENT)
+                            playerView.defaultArtwork = Color.TRANSPARENT.toDrawable()
                         }
                     }
 
@@ -267,6 +267,7 @@ class MainActivity : AppCompatActivity() {
     }
 
 
+    @OptIn(UnstableApi::class)
     private fun updateImageViewVisibilityBasedOnWidth() = with(binding) {
         val displayMetrics = resources.displayMetrics
 
@@ -277,7 +278,15 @@ class MainActivity : AppCompatActivity() {
         // Show ImageView only if width is 720dp or more
         if (widthDp >= 720 && !isCurrentVideo) {
             albumImage.visibility = View.VISIBLE
+            playerView.setBackgroundColor(Color.TRANSPARENT)
+            // playerView.videoSurfaceView?.visibility = View.INVISIBLE
+            playerView.setShutterBackgroundColor(Color.TRANSPARENT)
+
+
         } else {
+            // playerView.setBackgroundColor(Color.BLACK)
+            // playerView.videoSurfaceView?.visibility = View.VISIBLE
+            // playerView.setShutterBackgroundColor(Color.BLACK)
             albumImage.visibility = View.GONE
         }
     }
@@ -287,8 +296,11 @@ class MainActivity : AppCompatActivity() {
     private fun setDefaultArtworkAndBackground() = with(binding) {
         val context = playerView.context
         val placeholder = ContextCompat.getDrawable(context, R.drawable.default_album_art)
-        playerView.defaultArtwork = placeholder
-        playerView.setBackgroundColor(Color.BLACK)
+        //playerView.defaultArtwork = placeholder
+        albumImage.setImageDrawable(placeholder)
+        imgBackground.setBackgroundColor(Color.BLACK)
+        //playerView.setBackgroundColor(Color.BLACK)
+        Blurry.with(this@MainActivity).radius(25).sampling(4).from(placeholder?.toBitmap()).into(imgBackground)
     }
 
 

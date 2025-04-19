@@ -41,11 +41,11 @@ class MyMediaService : MediaSessionService() {
 //            MediaItem.fromUri("https://www.bensound.com/bensound-music/bensound-memories.mp3"),
 
             MediaItem.Builder()
-                .setUri("http://pewaukee.loginto.me:49000/stream2")
+                .setUri("https://www.bensound.com/bensound-music/bensound-anewbeginning.mp3")
                 .setMediaMetadata(
                     MediaMetadata.Builder()
-                        .setTitle("Pewaukee Stream")
-                        .setArtist("Pewaukee Radio")
+                        .setTitle("DC Once")
+                        .setArtist("DCOne Radio Station")
                         .setArtworkUri("https://d1csarkz8obe9u.cloudfront.net/themedlandingpages/tlp_hero_album-covers-d12ef0296af80b58363dc0deef077ecc.jpg".toUri()) // <- Set artwork here
                         .build()
                 )
@@ -61,7 +61,7 @@ class MyMediaService : MediaSessionService() {
                         .build()
                 )
                 .build(),
-
+            MediaItem.fromUri("http://pewaukee.loginto.me:49000/stream2"),
             mediaItem,
 
 
