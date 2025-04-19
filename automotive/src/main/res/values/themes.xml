@@ -1,0 +1,7 @@
+<resources>
+
+    <style name="Theme.CarPlayer" parent="Theme.AppCompat.Light.NoActionBar">
+        <!-- Customize your theme here -->
+    </style>
+
+</resources>

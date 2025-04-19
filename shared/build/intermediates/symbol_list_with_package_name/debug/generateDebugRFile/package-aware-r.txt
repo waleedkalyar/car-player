@@ -1,0 +1,2 @@
+com.example.carplayer.shared
+xml automotive_app_desc
