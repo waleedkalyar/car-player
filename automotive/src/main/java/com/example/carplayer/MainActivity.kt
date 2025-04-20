@@ -16,6 +16,7 @@ import android.graphics.Shader
 import android.graphics.SurfaceTexture
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Build
 
@@ -24,6 +25,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.Surface
 import android.view.View
+import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
@@ -103,9 +105,10 @@ class MainActivity : AppCompatActivity() {
     @OptIn(UnstableApi::class)
     private fun connectToMediaSession() = with(binding) {
 
-        // playerView.defaultArtwork = ContextCompat.getDrawable(this@MainActivity, R.drawable.default_album_art)
-
         // playerView.artworkDisplayMode = PlayerView.ARTWORK_DISPLAY_MODE_FIT
+
+        ContextCompat.getDrawable(this@MainActivity, R.drawable.default_album_art)
+            ?.let { showAndSetArtOnVisibilityBase(artwork = it) }
 
 
         val sessionToken = SessionToken(
@@ -180,7 +183,11 @@ class MainActivity : AppCompatActivity() {
                                             imgBackground.setBackgroundColor(dominantColor)
                                             albumImage.setBackgroundColor(Color.TRANSPARENT)
 
-                                            Blurry.with(this@MainActivity).radius(25).sampling(4).from(bitmap).into(imgBackground)
+                                            Blurry.with(this@MainActivity).radius(25).sampling(4)
+                                                .from(bitmap).into(imgBackground)
+
+                                            showAndSetArtOnVisibilityBase(artwork = drawable)
+
                                         }
 
 
@@ -243,7 +250,8 @@ class MainActivity : AppCompatActivity() {
                             playerView.videoSurfaceView?.visibility = View.INVISIBLE
                             playerView.setBackgroundColor(Color.TRANSPARENT)
                             playerView.setShutterBackgroundColor(Color.TRANSPARENT)
-                            playerView.defaultArtwork = Color.TRANSPARENT.toDrawable()
+                            imgBackground.visibility = View.VISIBLE
+                           // playerView.defaultArtwork = Color.TRANSPARENT.toDrawable()
                         }
                     }
 
@@ -288,7 +296,26 @@ class MainActivity : AppCompatActivity() {
             // playerView.videoSurfaceView?.visibility = View.VISIBLE
             // playerView.setShutterBackgroundColor(Color.BLACK)
             albumImage.visibility = View.GONE
+            imgBackground.visibility = View.INVISIBLE
         }
+    }
+
+    @UnstableApi
+    private fun showAndSetArtOnVisibilityBase(artwork: Drawable) = with(binding) {
+        val displayMetrics = resources.displayMetrics
+
+        // Calculate width in dp (density-independent pixels)
+        val widthDp = displayMetrics.widthPixels / displayMetrics.density
+
+        if (widthDp >= 720 && !isCurrentVideo) {
+            playerView.artworkDisplayMode = PlayerView.ARTWORK_DISPLAY_MODE_OFF
+            playerView.defaultArtwork = Color.TRANSPARENT.toDrawable()
+        } else {
+            playerView.artworkDisplayMode = PlayerView.ARTWORK_DISPLAY_MODE_FIT
+            playerView.defaultArtwork = artwork
+
+        }
+
     }
 
 
@@ -300,7 +327,8 @@ class MainActivity : AppCompatActivity() {
         albumImage.setImageDrawable(placeholder)
         imgBackground.setBackgroundColor(Color.BLACK)
         //playerView.setBackgroundColor(Color.BLACK)
-        Blurry.with(this@MainActivity).radius(25).sampling(4).from(placeholder?.toBitmap()).into(imgBackground)
+        Blurry.with(this@MainActivity).radius(25).sampling(4).from(placeholder?.toBitmap())
+            .into(imgBackground)
     }
 
 

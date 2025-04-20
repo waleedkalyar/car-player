@@ -40,32 +40,30 @@ class MyMediaService : MediaSessionService() {
 //            MediaItem.fromUri("https://www.bensound.com/bensound-music/bensound-dubstep.mp3"),
 //            MediaItem.fromUri("https://www.bensound.com/bensound-music/bensound-memories.mp3"),
 
-            MediaItem.Builder()
-                .setUri("https://www.bensound.com/bensound-music/bensound-anewbeginning.mp3")
-                .setMediaMetadata(
-                    MediaMetadata.Builder()
-                        .setTitle("DC Once")
-                        .setArtist("DCOne Radio Station")
-                        .setArtworkUri("https://d1csarkz8obe9u.cloudfront.net/themedlandingpages/tlp_hero_album-covers-d12ef0296af80b58363dc0deef077ecc.jpg".toUri()) // <- Set artwork here
-                        .build()
-                )
-                .build(),
+//            MediaItem.Builder()
+//                .setUri("https://stream-dc1.radioparadise.com/aac-320")
+//                .setMediaMetadata(
+//                    MediaMetadata.Builder()
+//                        .setTitle("DC Once")
+//                        .setArtist("DCOne Radio Station")
+//                        .setArtworkUri("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSjTQhQiSTPZZdvDVEM9L3eAtuHIfAgi5DmIf50-71d9akTsspWf5mOMVDxp2nOrbgfgE0&usqp=CAU".toUri()) // <- Set artwork here
+//                        .build()
+//                )
+//                .build(),
 
             MediaItem.Builder()
                 .setUri("http://pewaukee.loginto.me:49000/stream2")
-                .setMediaMetadata(
-                    MediaMetadata.Builder()
-                        .setTitle("Pewaukee Stream")
-                        .setArtist("Pewaukee Radio")
-                        .setArtworkUri("https://cdn-images.dzcdn.net/images/cover/8c989b334b11c25f27c70b9bd74ec667/1900x1900-000000-80-0-0.jpg".toUri()) // <- Set artwork here
-                        .build()
-                )
+//                .setMediaMetadata(
+//                    MediaMetadata.Builder()
+//                        .setTitle("Pewaukee Stream")
+//                        .setArtist("Pewaukee Radio")
+//                        .setArtworkUri("https://cdn-images.dzcdn.net/images/cover/8c989b334b11c25f27c70b9bd74ec667/1900x1900-000000-80-0-0.jpg".toUri()) // <- Set artwork here
+//                        .build()
+//                )
                 .build(),
-            MediaItem.fromUri("http://pewaukee.loginto.me:49000/stream2"),
-            mediaItem,
-
-
-            MediaItem.fromUri("http://pewaukee.loginto.me:49000/stream2")
+            MediaItem.fromUri("http://pewaukee.loginto.me:33000/0.ts"),
+            //mediaItem,
+           // MediaItem.fromUri("http://pewaukee.loginto.me:49000/stream2")
         )
 
 

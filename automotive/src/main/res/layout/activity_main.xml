@@ -5,6 +5,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main"
     android:animateLayoutChanges="true"
+    android:background="@color/black"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".MainActivity">
@@ -58,8 +59,8 @@
         android:contentDescription="@string/album_image"
         tools:visibility="visible"
         android:src="@drawable/default_album_art"
-        android:visibility="visible"
-        android:background="#000"
+        android:visibility="gone"
+        android:background="@android:color/transparent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toEndOf="@id/player_view"

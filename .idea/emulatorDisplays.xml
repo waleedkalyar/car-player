@@ -28,13 +28,13 @@
                 <PanelState>
                   <option name="splitPanel">
                     <SplitPanelState>
-                      <option name="proportion" value="0.8999999761581421" />
-                      <option name="splitType" value="VERTICAL" />
+                      <option name="proportion" value="0.8823529481887817" />
                       <option name="firstComponent">
                         <PanelState>
                           <option name="splitPanel">
                             <SplitPanelState>
                               <option name="proportion" value="0.8999999761581421" />
+                              <option name="splitType" value="VERTICAL" />
                               <option name="firstComponent">
                                 <PanelState>
                                   <option name="displayId" value="0" />
@@ -42,7 +42,7 @@
                               </option>
                               <option name="secondComponent">
                                 <PanelState>
-                                  <option name="displayId" value="6" />
+                                  <option name="displayId" value="7" />
                                 </PanelState>
                               </option>
                             </SplitPanelState>
@@ -51,7 +51,7 @@
                       </option>
                       <option name="secondComponent">
                         <PanelState>
-                          <option name="displayId" value="7" />
+                          <option name="displayId" value="6" />
                         </PanelState>
                       </option>
                     </SplitPanelState>
