@@ -4,34 +4,48 @@
 4
 5    <uses-sdk android:minSdkVersion="28" />
 6
-7    <application android:appCategory="audio" >
-7-->/Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:3:5-20:19
-7-->/Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:3:18-45
-8        <meta-data
-8-->/Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:5:9-7:59
-9            android:name="com.google.android.gms.car.application"
-9-->/Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:6:13-66
-10            android:resource="@xml/automotive_app_desc" />
-10-->/Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:7:13-56
-11
-12        <!--
-13         Main music service, provides media browsing and media playback services to
-14         consumers through MediaBrowserService and MediaSession. Consumers connect to it through
-15         MediaBrowser (for browsing) and MediaController (for playback control)
-16        -->
-17        <service
-17-->/Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:12:9-18:19
-18            android:name="com.example.carplayer.shared.MyMusicService"
-18-->/Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:13:13-71
-19            android:exported="true" >
-19-->/Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:14:13-36
-20            <intent-filter>
-20-->/Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:15:13-17:29
-21                <action android:name="android.media.browse.MediaBrowserService" />
-21-->/Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:16:17-83
-21-->/Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:16:25-80
-22            </intent-filter>
-23        </service>
-24    </application>
-25
-26</manifest>
+7    <uses-permission android:name="android.permission.INTERNET" />
+7-->/Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:3:5-66
+7-->/Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:3:22-64
+8
+9    <!-- <uses-permission android:name="android.permission.FOREGROUND_SERVICE" /> -->
+10    <!-- <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" /> -->
+11    <application android:appCategory="audio" >
+11-->/Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:8:5-30:19
+11-->/Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:8:18-45
+12        <meta-data
+12-->/Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:10:9-12:59
+13            android:name="com.google.android.gms.car.application"
+13-->/Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:11:13-66
+14            android:resource="@xml/automotive_app_desc" />
+14-->/Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:12:13-56
+15
+16        <!--
+17         Main music service, provides media browsing and media playback services to
+18         consumers through MediaBrowserService and MediaSession. Consumers connect to it through
+19         MediaBrowser (for browsing) and MediaController (for playback control)
+20        -->
+21        <service
+21-->/Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:17:9-23:19
+22            android:name="com.example.carplayer.shared.services.MyMediaService"
+22-->/Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:18:13-80
+23            android:exported="true" >
+23-->/Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:19:13-36
+24            <intent-filter>
+24-->/Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:20:13-22:29
+25                <action android:name="android.media.browse.MediaBrowserService" />
+25-->/Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:21:17-83
+25-->/Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:21:25-80
+26            </intent-filter>
+27        </service>
+28
+29        <!-- Android Auto support -->
+30        <meta-data
+30-->/Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:26:9-28:84
+31            android:name="android.media.session"
+31-->/Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:27:13-49
+32            android:value="com.example.carplayer.shared.services.MyMediaService" />
+32-->/Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:28:13-81
+33    </application>
+34
+35</manifest>

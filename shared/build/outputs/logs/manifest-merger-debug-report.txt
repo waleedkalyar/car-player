@@ -1,33 +1,43 @@
 -- Merging decision tree log ---
 manifest
-ADDED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:1:1-22:12
-INJECTED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:1:1-22:12
+ADDED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:1:1-32:12
+INJECTED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:1:1-32:12
 	package
 		INJECTED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml
 	xmlns:android
 		ADDED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:1:11-69
+uses-permission#android.permission.INTERNET
+ADDED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:3:5-66
+	android:name
+		ADDED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:3:22-64
 application
-ADDED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:3:5-20:19
+ADDED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:8:5-30:19
 	android:appCategory
-		ADDED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:3:18-45
+		ADDED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:8:18-45
 meta-data#com.google.android.gms.car.application
-ADDED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:5:9-7:59
+ADDED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:10:9-12:59
 	android:resource
-		ADDED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:7:13-56
+		ADDED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:12:13-56
 	android:name
-		ADDED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:6:13-66
-service#com.example.carplayer.shared.MyMusicService
-ADDED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:12:9-18:19
+		ADDED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:11:13-66
+service#com.example.carplayer.shared.services.MyMediaService
+ADDED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:17:9-23:19
 	android:exported
-		ADDED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:14:13-36
+		ADDED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:19:13-36
 	android:name
-		ADDED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:13:13-71
+		ADDED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:18:13-80
 intent-filter#action:name:android.media.browse.MediaBrowserService
-ADDED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:15:13-17:29
+ADDED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:20:13-22:29
 action#android.media.browse.MediaBrowserService
-ADDED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:16:17-83
+ADDED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:21:17-83
 	android:name
-		ADDED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:16:25-80
+		ADDED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:21:25-80
+meta-data#android.media.session
+ADDED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:26:9-28:84
+	android:value
+		ADDED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:28:13-81
+	android:name
+		ADDED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml:27:13-49
 uses-sdk
 INJECTED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from /Users/user/Documents/Samples/CarPlayer/shared/src/main/AndroidManifest.xml

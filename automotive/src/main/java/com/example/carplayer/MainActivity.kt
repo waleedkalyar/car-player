@@ -48,7 +48,6 @@ import androidx.media3.session.SessionToken
 import androidx.palette.graphics.Palette
 import coil.imageLoader
 import coil.request.ImageRequest
-import com.example.carplayer.services.MyMediaService
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -57,6 +56,7 @@ import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toDrawable
 import androidx.core.view.isInvisible
 import com.example.carplayer.databinding.ActivityMainBinding
+import com.example.carplayer.shared.services.MyMediaService
 import com.example.carplayer.utils.toBitmap
 import jp.wasabeef.blurry.Blurry
 
@@ -368,7 +368,7 @@ class MainActivity : AppCompatActivity() {
         hardwareRenderer.destroy() // Clean up
 
         // Alternative simple blur if not showing in UI: fallback (paint-based blur)
-        val fallback = Bitmap.createBitmap(width, height, config ?: Bitmap.Config.ARGB_8888)
+        val fallback = createBitmap(width, height, config ?: Bitmap.Config.ARGB_8888)
         val fallbackCanvas = Canvas(fallback)
         // val paint = Paint().apply { setRenderEffect(renderEffect) }
         // fallbackCanvas.drawBitmap(this, 0f, 0f, paint)

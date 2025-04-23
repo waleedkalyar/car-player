@@ -4,6 +4,10 @@
 
     <uses-sdk android:minSdkVersion="28" />
 
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- <uses-permission android:name="android.permission.FOREGROUND_SERVICE" /> -->
+    <!-- <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" /> -->
     <application android:appCategory="audio" >
         <meta-data
             android:name="com.google.android.gms.car.application"
@@ -15,12 +19,17 @@
          MediaBrowser (for browsing) and MediaController (for playback control)
         -->
         <service
-            android:name="com.example.carplayer.shared.MyMusicService"
+            android:name="com.example.carplayer.shared.services.MyMediaService"
             android:exported="true" >
             <intent-filter>
                 <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>
         </service>
+
+        <!-- Android Auto support -->
+        <meta-data
+            android:name="android.media.session"
+            android:value="com.example.carplayer.shared.services.MyMediaService" />
     </application>
 
 </manifest>

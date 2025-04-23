@@ -32,7 +32,7 @@
 
 
         <service
-            android:name=".services.MyMediaService"
+            android:name=".shared.services.MyMediaService"
             android:exported="true"
             android:foregroundServiceType="mediaPlayback"
             android:enabled="true">

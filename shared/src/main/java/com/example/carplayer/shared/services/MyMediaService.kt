@@ -1,5 +1,11 @@
-package com.example.carplayer.services
+package com.example.carplayer.shared.services
 
+import android.annotation.SuppressLint
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
+import android.os.Build
+import androidx.core.app.NotificationCompat
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -40,19 +46,19 @@ class MyMediaService : MediaSessionService() {
 //            MediaItem.fromUri("https://www.bensound.com/bensound-music/bensound-dubstep.mp3"),
 //            MediaItem.fromUri("https://www.bensound.com/bensound-music/bensound-memories.mp3"),
 
-//            MediaItem.Builder()
-//                .setUri("https://stream-dc1.radioparadise.com/aac-320")
-//                .setMediaMetadata(
-//                    MediaMetadata.Builder()
-//                        .setTitle("DC Once")
-//                        .setArtist("DCOne Radio Station")
-//                        .setArtworkUri("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSjTQhQiSTPZZdvDVEM9L3eAtuHIfAgi5DmIf50-71d9akTsspWf5mOMVDxp2nOrbgfgE0&usqp=CAU".toUri()) // <- Set artwork here
-//                        .build()
-//                )
-//                .build(),
-
             MediaItem.Builder()
-                .setUri("http://pewaukee.loginto.me:49000/stream2")
+                .setUri("https://stream-dc1.radioparadise.com/aac-320")
+                .setMediaMetadata(
+                    MediaMetadata.Builder()
+                        .setTitle("DC Once")
+                        .setArtist("DCOne Radio Station")
+                        .setArtworkUri("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSjTQhQiSTPZZdvDVEM9L3eAtuHIfAgi5DmIf50-71d9akTsspWf5mOMVDxp2nOrbgfgE0&usqp=CAU".toUri()) // <- Set artwork here
+                        .build()
+                )
+                .build(),
+
+//            MediaItem.Builder()
+//                .setUri("http://pewaukee.loginto.me:49000/stream2")
 //                .setMediaMetadata(
 //                    MediaMetadata.Builder()
 //                        .setTitle("Pewaukee Stream")
@@ -60,10 +66,10 @@ class MyMediaService : MediaSessionService() {
 //                        .setArtworkUri("https://cdn-images.dzcdn.net/images/cover/8c989b334b11c25f27c70b9bd74ec667/1900x1900-000000-80-0-0.jpg".toUri()) // <- Set artwork here
 //                        .build()
 //                )
-                .build(),
-            MediaItem.fromUri("http://pewaukee.loginto.me:33000/0.ts"),
-            //mediaItem,
-           // MediaItem.fromUri("http://pewaukee.loginto.me:49000/stream2")
+//                .build(),
+//            MediaItem.fromUri("http://pewaukee.loginto.me:33000/0.ts"),
+            mediaItem,
+            MediaItem.fromUri("http://pewaukee.loginto.me:49000/stream2")
         )
 
 
@@ -75,6 +81,9 @@ class MyMediaService : MediaSessionService() {
         player?.playWhenReady = true
 
         mediaSession = MediaSession.Builder(this, player!!).build()
+
+        // ✅ Start Foreground with basic media notification
+        //startForegroundWithNotification()
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {
@@ -86,5 +95,29 @@ class MyMediaService : MediaSessionService() {
         player?.release()
         super.onDestroy()
     }
+
+    @SuppressLint("ForegroundServiceType")
+    private fun startForegroundWithNotification() {
+        val channelId = "media_playback_channel"
+        val channelName = "Media Playback"
+
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val channel = NotificationChannel(
+            channelId,
+            channelName,
+            NotificationManager.IMPORTANCE_LOW
+        )
+        notificationManager.createNotificationChannel(channel)
+
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setContentTitle("CarPlayer")
+            .setContentText("Playing music...")
+            .setSmallIcon(android.R.drawable.ic_media_play)
+            .setOngoing(true)
+            .build()
+
+        startForeground(1, notification)
+    }
+
 }
 

@@ -1,3 +1,7 @@
 <resources>
-    <string name="app_name">CarPlayer</string>
+        <string name="app_name">CarPlayer</string>
+        <string name="rewind">Rewind</string>
+        <string name="play_pause">Play/Pause</string>
+        <string name="fast_forward">Fast Forward</string>
+        <string name="album_image">album image</string>
 </resources>
