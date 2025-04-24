@@ -31,10 +31,13 @@ import androidx.core.graphics.drawable.toBitmap
 import androidx.core.graphics.drawable.toDrawable
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Metadata
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.extractor.metadata.icy.IcyInfo
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import androidx.media3.ui.PlayerView
@@ -42,6 +45,8 @@ import androidx.palette.graphics.Palette
 import coil.imageLoader
 import coil.request.ImageRequest
 import com.example.carplayer.databinding.ActivityMainBinding
+import com.example.carplayer.models.TrackAlbumModel
+import com.example.carplayer.network.api.lastFmApi
 import com.example.carplayer.shared.services.MyMediaService
 import com.google.common.util.concurrent.ListenableFuture
 import jp.wasabeef.blurry.Blurry
@@ -133,64 +138,96 @@ class MainActivity : AppCompatActivity() {
                         // loadingSpinner.visibility = if (isLoading) View.VISIBLE else View.GONE
                     }
 
+                    override fun onMetadata(metadata: Metadata) {
+                        super.onMetadata(metadata)
+                        Log.d("MEDIA_ICY", "onMetadata: size "+metadata.length())
+                        for (i in 0 until metadata.length()) {
+                            val entry = metadata[i]
+                            if (entry is IcyInfo) {
+                                val title = entry.title
+                                val url = entry.url // Sometimes contains album art
+                                Log.d("MEDIA_ICY", "Title: $title, URL: $url")
+                            }
+                        }
+                    }
+
+
+
                     @SuppressLint("UseKtx")
                     override fun onMediaMetadataChanged(metadata: MediaMetadata) {
-                        val title = metadata.title ?: "Unknown Title"
-                        val artist = metadata.artist ?: "Unknown Artist"
-                        titleText.text = title
-                        artistText.text = artist
 
-                        val artworkUri = metadata.artworkUri
+                        val rawTitle = metadata.title ?: return
+                        val (artist, track) = rawTitle.split(" - ").let {
+                            it.getOrNull(0).orEmpty() to it.getOrNull(1).orEmpty()
+                        }
 
-                        Log.d("Meta", "onMediaMetadataChanged: artwork url -> $artworkUri ")
+                        if (artist.isNotBlank() && track.isNotBlank()) {
+                            lifecycleScope.launch {
+                             var albumInfo = fetchAlbumArt(artist, track,"c62a1d89e34fa71897a4bb4df15e8510")
 
-                        if (artworkUri != null) {
-                            val context = playerView.context
+                             titleText.text = albumInfo?.title
+                             artistText.text = albumInfo?.artist
 
-                            CoroutineScope(Dispatchers.Main).launch {
-                                try {
-                                    val request = ImageRequest.Builder(context)
-                                        .data(artworkUri)
-                                        .allowHardware(false) // Required to get Bitmap for Palette
-                                        .build()
+                                val artworkUri = albumInfo?.imageUrl//metadata.artworkUri
 
-                                    val result = context.imageLoader.execute(request)
-                                    val drawable = result.drawable
+                                Log.d("Meta", "onMediaMetadataChanged: artwork url -> $artworkUri")
 
-                                    if (drawable != null) {
-                                        // Set artwork
-                                        // playerView.defaultArtwork = drawable
+                                if (artworkUri != null) {
+                                    val context = playerView.context
 
-                                        albumImage.setImageDrawable(drawable)
+                                    CoroutineScope(Dispatchers.Main).launch {
+                                        try {
+                                            val request = ImageRequest.Builder(context)
+                                                .data(artworkUri)
+                                                .allowHardware(false) // Required to get Bitmap for Palette
+                                                .build()
 
-                                        // Extract dominant color from bitmap using Palette
-                                        val bitmap = (drawable as BitmapDrawable).bitmap
-                                        Palette.from(bitmap).generate { palette ->
-                                            val dominantColor =
-                                                palette?.getDominantColor(Color.BLACK)
-                                                    ?: Color.BLACK
-                                            imgBackground.setBackgroundColor(dominantColor)
-                                            albumImage.setBackgroundColor(Color.TRANSPARENT)
+                                            val result = context.imageLoader.execute(request)
+                                            val drawable = result.drawable
 
-                                            Blurry.with(this@MainActivity).radius(25).sampling(4)
-                                                .from(bitmap).into(imgBackground)
+                                            if (drawable != null) {
+                                                // Set artwork
+                                                // playerView.defaultArtwork = drawable
 
-                                            showAndSetArtOnVisibilityBase(artwork = drawable)
+                                                albumImage.setImageDrawable(drawable)
 
+                                                // Extract dominant color from bitmap using Palette
+                                                val bitmap = (drawable as BitmapDrawable).bitmap
+                                                Palette.from(bitmap).generate { palette ->
+                                                    val dominantColor =
+                                                        palette?.getDominantColor(Color.BLACK)
+                                                            ?: Color.BLACK
+                                                    imgBackground.setBackgroundColor(dominantColor)
+                                                    albumImage.setBackgroundColor(Color.TRANSPARENT)
+
+                                                    Blurry.with(this@MainActivity).radius(25).sampling(4)
+                                                        .from(bitmap).into(imgBackground)
+
+                                                    showAndSetArtOnVisibilityBase(artwork = drawable)
+
+                                                }
+
+
+                                            } else {
+                                                setDefaultArtworkAndBackground()
+                                            }
+                                        } catch (e: Exception) {
+                                            Log.e("ArtworkLoad", "Failed to load artwork", e)
+                                            setDefaultArtworkAndBackground()
                                         }
-
-
-                                    } else {
-                                        setDefaultArtworkAndBackground()
                                     }
-                                } catch (e: Exception) {
-                                    Log.e("ArtworkLoad", "Failed to load artwork", e)
+                                } else {
                                     setDefaultArtworkAndBackground()
                                 }
+
                             }
-                        } else {
-                            setDefaultArtworkAndBackground()
+
                         }
+
+
+
+
+
                     }
 
                     override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -362,6 +399,26 @@ class MainActivity : AppCompatActivity() {
         // val paint = Paint().apply { setRenderEffect(renderEffect) }
         // fallbackCanvas.drawBitmap(this, 0f, 0f, paint)
         return fallback
+    }
+
+
+    suspend fun fetchAlbumArt(artist: String, track: String, apiKey: String): TrackAlbumModel? {
+         try {
+            val response = lastFmApi.getTrackInfo(apiKey, artist, track)
+            val images = response.track?.album?.image
+            // Pick "extralarge" or the biggest one
+            var imageUrl =  images?.findLast { it.size == "extralarge" || it.size == "mega" }?.url
+
+            var title:String = response.track?.album?.title.toString()
+            var artist = response.track?.artist?.name.toString()
+
+            return TrackAlbumModel(title = title, artist = artist, imageUrl = imageUrl.toString())
+
+        } catch (e: Exception) {
+            Log.e("LastFm", "Error fetching album art: ${e.message}")
+           return null
+
+        }
     }
 
 
