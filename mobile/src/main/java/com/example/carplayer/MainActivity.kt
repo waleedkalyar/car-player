@@ -29,6 +29,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.graphics.drawable.toDrawable
+import androidx.core.os.bundleOf
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
@@ -39,6 +40,7 @@ import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.extractor.metadata.icy.IcyInfo
 import androidx.media3.session.MediaController
+import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
 import androidx.media3.ui.PlayerView
 import androidx.palette.graphics.Palette
@@ -53,6 +55,8 @@ import jp.wasabeef.blurry.Blurry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
+import java.util.UUID
 
 class MainActivity : AppCompatActivity() {
     private var _binding: ActivityMainBinding? = null
@@ -123,6 +127,30 @@ class MainActivity : AppCompatActivity() {
                 mediaController = controller
                 playerView.player = controller
 
+                // call this to load meta data for first item.. after that it will update from on metadata changed
+                controller?.currentMediaItem?.mediaMetadata?.title?.let { rawTitle ->
+                    val (artist, track) = rawTitle.split(" - ").let {
+                        it.getOrNull(0).orEmpty() to it.getOrNull(1).orEmpty()
+                    }
+
+                    if (artist.isNotBlank() && track.isNotBlank()) {
+                        lifecycleScope.launch {
+                            val albumInfo =
+                                fetchAlbumArt(artist, track, "c62a1d89e34fa71897a4bb4df15e8510")
+                            val extras = Bundle().apply {
+                                putString("title", albumInfo?.title)
+                                putString("artist", albumInfo?.artist)
+                                putString("artworkUrl", albumInfo?.imageUrl)
+                            }
+
+                            val command = SessionCommand("UPDATE_METADATA", Bundle.EMPTY)
+                            controller.sendCustomCommand(command, extras)
+                        }
+                    }
+                }
+
+
+
 
                 controller?.addListener(object : Player.Listener {
                     override fun onPlaybackStateChanged(state: Int) {
@@ -138,20 +166,6 @@ class MainActivity : AppCompatActivity() {
                         // loadingSpinner.visibility = if (isLoading) View.VISIBLE else View.GONE
                     }
 
-                    override fun onMetadata(metadata: Metadata) {
-                        super.onMetadata(metadata)
-                        Log.d("MEDIA_ICY", "onMetadata: size "+metadata.length())
-                        for (i in 0 until metadata.length()) {
-                            val entry = metadata[i]
-                            if (entry is IcyInfo) {
-                                val title = entry.title
-                                val url = entry.url // Sometimes contains album art
-                                Log.d("MEDIA_ICY", "Title: $title, URL: $url")
-                            }
-                        }
-                    }
-
-
 
                     @SuppressLint("UseKtx")
                     override fun onMediaMetadataChanged(metadata: MediaMetadata) {
@@ -163,12 +177,25 @@ class MainActivity : AppCompatActivity() {
 
                         if (artist.isNotBlank() && track.isNotBlank()) {
                             lifecycleScope.launch {
-                             var albumInfo = fetchAlbumArt(artist, track,"c62a1d89e34fa71897a4bb4df15e8510")
+                                var albumInfo =
+                                    fetchAlbumArt(artist, track, "c62a1d89e34fa71897a4bb4df15e8510")
 
-                             titleText.text = albumInfo?.title
-                             artistText.text = albumInfo?.artist
+                                titleText.text = albumInfo?.title
+                                artistText.text = albumInfo?.artist
 
                                 val artworkUri = albumInfo?.imageUrl//metadata.artworkUri
+
+                                val command = SessionCommand("UPDATE_METADATA", Bundle.EMPTY)
+
+                                val extras = Bundle().apply {
+                                    putString("title", albumInfo?.title)
+                                    putString("artist", albumInfo?.artist)
+                                    putString("artworkUrl", albumInfo?.imageUrl)
+                                }
+
+
+                                controller.sendCustomCommand(command, extras)
+
 
                                 Log.d("Meta", "onMediaMetadataChanged: artwork url -> $artworkUri")
 
@@ -200,7 +227,8 @@ class MainActivity : AppCompatActivity() {
                                                     imgBackground.setBackgroundColor(dominantColor)
                                                     albumImage.setBackgroundColor(Color.TRANSPARENT)
 
-                                                    Blurry.with(this@MainActivity).radius(25).sampling(4)
+                                                    Blurry.with(this@MainActivity).radius(25)
+                                                        .sampling(4)
                                                         .from(bitmap).into(imgBackground)
 
                                                     showAndSetArtOnVisibilityBase(artwork = drawable)
@@ -223,9 +251,6 @@ class MainActivity : AppCompatActivity() {
                             }
 
                         }
-
-
-
 
 
                     }
@@ -403,20 +428,27 @@ class MainActivity : AppCompatActivity() {
 
 
     suspend fun fetchAlbumArt(artist: String, track: String, apiKey: String): TrackAlbumModel? {
-         try {
+        try {
             val response = lastFmApi.getTrackInfo(apiKey, artist, track)
             val images = response.track?.album?.image
             // Pick "extralarge" or the biggest one
-            var imageUrl =  images?.findLast { it.size == "extralarge" || it.size == "mega" }?.url
+            var imageUrl = images?.findLast { it.size == "extralarge" || it.size == "mega" }?.url
 
-            var title:String = response.track?.album?.title.toString()
+            var title: String = response.track?.album?.title.toString()
             var artist = response.track?.artist?.name.toString()
 
-            return TrackAlbumModel(title = title, artist = artist, imageUrl = imageUrl.toString())
+
+
+            return TrackAlbumModel(
+                id = response.track?.mbid ?: UUID.randomUUID().toString(),
+                title = title,
+                artist = artist,
+                imageUrl = imageUrl.toString()
+            )
 
         } catch (e: Exception) {
             Log.e("LastFm", "Error fetching album art: ${e.message}")
-           return null
+            return null
 
         }
     }

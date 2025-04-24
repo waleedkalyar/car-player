@@ -4,18 +4,29 @@ import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
+import android.net.Uri
 import android.os.Build
+import android.os.Bundle
+import android.util.Log
 import androidx.annotation.OptIn
 import androidx.core.app.NotificationCompat
 import androidx.core.net.toUri
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionCommands
+import androidx.media3.session.SessionResult
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.ListenableFutureTask
 
 class MyMediaService : MediaSessionService() {
 
@@ -72,7 +83,69 @@ class MyMediaService : MediaSessionService() {
         player?.prepare()
         player?.playWhenReady = true
 
-        mediaSession = MediaSession.Builder(this, player!!).build()
+        mediaSession = MediaSession.Builder(this, player!!)
+
+            .setCallback(object : MediaSession.Callback{
+
+                override fun onConnect(
+                    session: MediaSession,
+                    controller: MediaSession.ControllerInfo
+                ): MediaSession.ConnectionResult {
+                    val allowedCommands = SessionCommands.Builder()
+                        .add(SessionCommand("UPDATE_METADATA", Bundle.EMPTY))
+                        .build()
+                    return MediaSession.ConnectionResult.accept(
+                        allowedCommands,
+                        Player.Commands.Builder().addAllCommands().build()
+                    )
+                }
+
+
+
+                override fun onCustomCommand(
+                    session: MediaSession,
+                    controller: MediaSession.ControllerInfo,
+                    customCommand: SessionCommand,
+                    args: Bundle
+                ): ListenableFuture<SessionResult> {
+                    if(customCommand.customAction == "UPDATE_METADATA"){
+                        val title = args.getString("title") ?: ""
+                        val artist = args.getString("artist") ?: ""
+                        val artworkUrl = args.getString("artworkUrl") ?: ""
+
+                        Log.d("CustomCommand","title -> $title , artist -> $artist")
+
+                        val newMetadata = MediaMetadata.Builder()
+                            .setTitle(title)
+                            .setArtist(artist)
+                            .setArtworkUri(artworkUrl.toUri())
+                            .build()
+
+
+                        val updatedMediaItem = player?.currentMediaItem
+                            ?.buildUpon()
+                            ?.setMediaMetadata(newMetadata)
+                            ?.build()
+
+                        val currentIndex = player?.currentMediaItemIndex ?: RESULT_ERROR
+
+                        if (updatedMediaItem != null) {
+
+                            val items = mediaItems.toMutableList()
+                            items[currentIndex] = updatedMediaItem
+                            player?.setMediaItems(items, currentIndex, C.TIME_UNSET)
+                        }
+
+
+
+                    }
+
+                   // return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+
+                    return super.onCustomCommand(session, controller, customCommand, args)
+                }
+            })
+            .build()
 
 
 
@@ -83,6 +156,11 @@ class MyMediaService : MediaSessionService() {
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {
         return mediaSession
     }
+
+
+
+
+
 
     override fun onDestroy() {
         mediaSession?.release()
@@ -111,6 +189,12 @@ class MyMediaService : MediaSessionService() {
             .build()
 
         startForeground(1, notification)
+    }
+
+
+    companion object {
+        const val RESULT_SUCCESS = 0
+        const val RESULT_ERROR = -1
     }
 
 }
