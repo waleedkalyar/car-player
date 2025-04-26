@@ -47,15 +47,13 @@ import androidx.palette.graphics.Palette
 import coil.imageLoader
 import coil.request.ImageRequest
 import com.example.carplayer.databinding.ActivityMainBinding
-import com.example.carplayer.models.TrackAlbumModel
-import com.example.carplayer.network.api.lastFmApi
 import com.example.carplayer.shared.services.MyMediaService
 import com.google.common.util.concurrent.ListenableFuture
 import jp.wasabeef.blurry.Blurry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.Json
+import kotlinx.coroutines.runBlocking
 import java.util.UUID
 
 class MainActivity : AppCompatActivity() {
@@ -128,27 +126,6 @@ class MainActivity : AppCompatActivity() {
                 playerView.player = controller
 
                 // call this to load meta data for first item.. after that it will update from on metadata changed
-                controller?.currentMediaItem?.mediaMetadata?.title?.let { rawTitle ->
-                    val (artist, track) = rawTitle.split(" - ").let {
-                        it.getOrNull(0).orEmpty() to it.getOrNull(1).orEmpty()
-                    }
-
-                    if (artist.isNotBlank() && track.isNotBlank()) {
-                        lifecycleScope.launch {
-                            val albumInfo =
-                                fetchAlbumArt(artist, track, "c62a1d89e34fa71897a4bb4df15e8510")
-                            val extras = Bundle().apply {
-                                putString("title", albumInfo?.title)
-                                putString("artist", albumInfo?.artist)
-                                putString("artworkUrl", albumInfo?.imageUrl)
-                            }
-
-                            val command = SessionCommand("UPDATE_METADATA", Bundle.EMPTY)
-                            controller.sendCustomCommand(command, extras)
-                        }
-                    }
-                }
-
 
 
 
@@ -169,88 +146,48 @@ class MainActivity : AppCompatActivity() {
 
                     @SuppressLint("UseKtx")
                     override fun onMediaMetadataChanged(metadata: MediaMetadata) {
+                        titleText.text= metadata.title
+                        artistText.text = metadata.artist
 
-                        val rawTitle = metadata.title ?: return
-                        val (artist, track) = rawTitle.split(" - ").let {
-                            it.getOrNull(0).orEmpty() to it.getOrNull(1).orEmpty()
-                        }
-
-                        if (artist.isNotBlank() && track.isNotBlank()) {
+                        if(metadata.artworkUri != null && metadata.artworkUri.toString().isNotEmpty()){
                             lifecycleScope.launch {
-                                var albumInfo =
-                                    fetchAlbumArt(artist, track, "c62a1d89e34fa71897a4bb4df15e8510")
+                                runCatching {
 
-                                titleText.text = albumInfo?.title
-                                artistText.text = albumInfo?.artist
+                                    val request = ImageRequest.Builder(this@MainActivity)
+                                        .data(metadata.artworkUri)
+                                        .allowHardware(false) // Required to get Bitmap for Palette
+                                        .build()
 
-                                val artworkUri = albumInfo?.imageUrl//metadata.artworkUri
+                                    val result = this@MainActivity.imageLoader.execute(request)
+                                    val drawable = result.drawable
 
-                                val command = SessionCommand("UPDATE_METADATA", Bundle.EMPTY)
+                                    if (drawable != null) {
+                                        albumImage.setImageDrawable(drawable)
+                                        // Extract dominant color from bitmap using Palette
+                                        val bitmap = (drawable as BitmapDrawable).bitmap
+                                        Palette.from(bitmap).generate { palette ->
+                                            val dominantColor =
+                                                palette?.getDominantColor(Color.BLACK)
+                                                    ?: Color.BLACK
+                                            imgBackground.setBackgroundColor(dominantColor)
+                                            albumImage.setBackgroundColor(Color.TRANSPARENT)
 
-                                val extras = Bundle().apply {
-                                    putString("title", albumInfo?.title)
-                                    putString("artist", albumInfo?.artist)
-                                    putString("artworkUrl", albumInfo?.imageUrl)
-                                }
+                                            Blurry.with(this@MainActivity).radius(25)
+                                                .sampling(4)
+                                                .from(bitmap).into(imgBackground)
 
-
-                                controller.sendCustomCommand(command, extras)
-
-
-                                Log.d("Meta", "onMediaMetadataChanged: artwork url -> $artworkUri")
-
-                                if (artworkUri != null) {
-                                    val context = playerView.context
-
-                                    CoroutineScope(Dispatchers.Main).launch {
-                                        try {
-                                            val request = ImageRequest.Builder(context)
-                                                .data(artworkUri)
-                                                .allowHardware(false) // Required to get Bitmap for Palette
-                                                .build()
-
-                                            val result = context.imageLoader.execute(request)
-                                            val drawable = result.drawable
-
-                                            if (drawable != null) {
-                                                // Set artwork
-                                                // playerView.defaultArtwork = drawable
-
-                                                albumImage.setImageDrawable(drawable)
-
-                                                // Extract dominant color from bitmap using Palette
-                                                val bitmap = (drawable as BitmapDrawable).bitmap
-                                                Palette.from(bitmap).generate { palette ->
-                                                    val dominantColor =
-                                                        palette?.getDominantColor(Color.BLACK)
-                                                            ?: Color.BLACK
-                                                    imgBackground.setBackgroundColor(dominantColor)
-                                                    albumImage.setBackgroundColor(Color.TRANSPARENT)
-
-                                                    Blurry.with(this@MainActivity).radius(25)
-                                                        .sampling(4)
-                                                        .from(bitmap).into(imgBackground)
-
-                                                    showAndSetArtOnVisibilityBase(artwork = drawable)
-
-                                                }
-
-
-                                            } else {
-                                                setDefaultArtworkAndBackground()
-                                            }
-                                        } catch (e: Exception) {
-                                            Log.e("ArtworkLoad", "Failed to load artwork", e)
-                                            setDefaultArtworkAndBackground()
+                                            showAndSetArtOnVisibilityBase(artwork = drawable)
                                         }
+                                    }else {
+                                        setDefaultArtworkAndBackground()
                                     }
-                                } else {
+                                }.onFailure {
                                     setDefaultArtworkAndBackground()
                                 }
-
                             }
 
                         }
+
 
 
                     }
@@ -427,31 +364,6 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    suspend fun fetchAlbumArt(artist: String, track: String, apiKey: String): TrackAlbumModel? {
-        try {
-            val response = lastFmApi.getTrackInfo(apiKey, artist, track)
-            val images = response.track?.album?.image
-            // Pick "extralarge" or the biggest one
-            var imageUrl = images?.findLast { it.size == "extralarge" || it.size == "mega" }?.url
-
-            var title: String = response.track?.album?.title.toString()
-            var artist = response.track?.artist?.name.toString()
-
-
-
-            return TrackAlbumModel(
-                id = response.track?.mbid ?: UUID.randomUUID().toString(),
-                title = title,
-                artist = artist,
-                imageUrl = imageUrl.toString()
-            )
-
-        } catch (e: Exception) {
-            Log.e("LastFm", "Error fetching album art: ${e.message}")
-            return null
-
-        }
-    }
 
 
 }
