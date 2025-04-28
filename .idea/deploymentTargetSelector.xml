@@ -4,6 +4,14 @@
     <selectionStates>
       <SelectionState runConfigName="CarPlayer.mobile">
         <option name="selectionMode" value="DROPDOWN" />
+        <DropdownSelection timestamp="2025-04-26T06:55:05.353326Z">
+          <Target type="DEFAULT_BOOT">
+            <handle>
+              <DeviceId pluginId="Default" identifier="serial=15781133010008O;connection=994eb779" />
+            </handle>
+          </Target>
+        </DropdownSelection>
+        <DialogSelection />
       </SelectionState>
       <SelectionState runConfigName="CarPlayer.automotive">
         <option name="selectionMode" value="DROPDOWN" />

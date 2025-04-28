@@ -1,46 +1,39 @@
 package com.example.carplayer
 
 import android.annotation.SuppressLint
+import android.app.Activity
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.res.Configuration
-import android.graphics.Bitmap
-import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.HardwareRenderer
-import android.graphics.RenderEffect
-import android.graphics.RenderNode
-import android.graphics.Shader
-import android.graphics.SurfaceTexture
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
-import android.view.Surface
 import android.view.View
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
-import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.graphics.drawable.toDrawable
-import androidx.core.os.bundleOf
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.MediaMetadata
-import androidx.media3.common.Metadata
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.extractor.metadata.icy.IcyInfo
 import androidx.media3.session.MediaController
-import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
 import androidx.media3.ui.PlayerView
 import androidx.palette.graphics.Palette
@@ -50,11 +43,8 @@ import com.example.carplayer.databinding.ActivityMainBinding
 import com.example.carplayer.shared.services.MyMediaService
 import com.google.common.util.concurrent.ListenableFuture
 import jp.wasabeef.blurry.Blurry
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
-import java.util.UUID
 
 class MainActivity : AppCompatActivity() {
     private var _binding: ActivityMainBinding? = null
@@ -63,6 +53,37 @@ class MainActivity : AppCompatActivity() {
     private var mediaControllerFuture: ListenableFuture<MediaController>? = null
 
     private var isCurrentVideo = false
+
+    private val bluetoothPermissions = mutableListOf(
+        android.Manifest.permission.BLUETOOTH, android.Manifest.permission.BLUETOOTH_ADMIN
+    )
+
+    // Add new permissions for Android 12+ and location
+    @SuppressLint("InlinedApi")
+    private val android12PlusPermissions = listOf(
+        android.Manifest.permission.BLUETOOTH_SCAN,
+        android.Manifest.permission.BLUETOOTH_CONNECT,
+        android.Manifest.permission.ACCESS_FINE_LOCATION,
+        android.Manifest.permission.ACCESS_COARSE_LOCATION
+    )
+
+    private val enableBluetoothLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            Log.d("Bluetooth", "Bluetooth enabled by user")
+            Toast.makeText(this,"Bluetooth is enabled, connect media with your car", Toast.LENGTH_SHORT).show()
+
+        } else {
+            Log.e("Bluetooth", "Bluetooth not enabled by user")
+        }
+    }
+
+
+
+    companion object {
+        private const val PERMISSION_REQUEST_CODE = 1001
+    }
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -77,6 +98,14 @@ class MainActivity : AppCompatActivity() {
         }
 
         initViews()
+
+        lifecycleScope.launch {
+            delay(2500L)
+            checkAndRequestBluetoothPermissions()
+        }
+
+
+
 
     }
 
@@ -98,6 +127,69 @@ class MainActivity : AppCompatActivity() {
     }
 
 
+    private fun checkAndRequestBluetoothPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            bluetoothPermissions.addAll(android12PlusPermissions)
+        } else {
+            bluetoothPermissions.addAll(
+                listOf(
+                    android.Manifest.permission.ACCESS_FINE_LOCATION,
+                    android.Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
+
+        val permissionsToRequest = bluetoothPermissions.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+
+        if (permissionsToRequest.isNotEmpty()) {
+            ActivityCompat.requestPermissions(
+                this, permissionsToRequest.toTypedArray(), PERMISSION_REQUEST_CODE
+            )
+        }
+    }
+
+
+    // Optional: Handle permission result
+    override fun onRequestPermissionsResult(
+        requestCode: Int, permissions: Array<out String>, grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == PERMISSION_REQUEST_CODE) {
+            if (grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+                Log.d("Permissions", "All permissions granted.")
+                enableBluetoothAndConnectToCar()
+            } else {
+                Log.e("Permissions", "Some permissions were denied.")
+                Toast.makeText(
+                    this@MainActivity,
+                    "Permissions are required to play with Car Player",
+                    Toast.LENGTH_SHORT
+                ).show()
+                finish()
+                // Optionally show dialog or disable functionality
+            }
+        }
+    }
+
+
+    fun enableBluetoothAndConnectToCar(){
+        val adapter = getBluetoothAdapter(this)
+        adapter?.let { bluetoothAdapter ->
+            if(!bluetoothAdapter.isEnabled) {
+                val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+                enableBluetoothLauncher.launch(enableBtIntent)
+            }
+        }
+    }
+
+    fun getBluetoothAdapter(context: Context): BluetoothAdapter? {
+        val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+        return bluetoothManager?.adapter
+    }
+
+
     @OptIn(UnstableApi::class)
     private fun connectToMediaSession() = with(binding) {
 
@@ -108,12 +200,11 @@ class MainActivity : AppCompatActivity() {
 
 
         val sessionToken = SessionToken(
-            this@MainActivity,
-            ComponentName(this@MainActivity, MyMediaService::class.java)
+            this@MainActivity, ComponentName(this@MainActivity, MyMediaService::class.java)
         )
 
-        mediaControllerFuture = MediaController.Builder(this@MainActivity, sessionToken)
-            .buildAsync()
+        mediaControllerFuture =
+            MediaController.Builder(this@MainActivity, sessionToken).buildAsync()
 
 
         val titleText = findViewById<TextView>(R.id.track_title)
@@ -128,14 +219,12 @@ class MainActivity : AppCompatActivity() {
                 // call this to load meta data for first item.. after that it will update from on metadata changed
 
 
-
                 controller?.addListener(object : Player.Listener {
                     override fun onPlaybackStateChanged(state: Int) {
                         when (state) {
                             Player.STATE_BUFFERING -> loadingSpinner.visibility = View.VISIBLE
-                            Player.STATE_READY,
-                            Player.STATE_ENDED,
-                            Player.STATE_IDLE -> loadingSpinner.visibility = View.GONE
+                            Player.STATE_READY, Player.STATE_ENDED, Player.STATE_IDLE -> loadingSpinner.visibility =
+                                View.GONE
                         }
                     }
 
@@ -146,13 +235,14 @@ class MainActivity : AppCompatActivity() {
 
                     @SuppressLint("UseKtx")
                     override fun onMediaMetadataChanged(metadata: MediaMetadata) {
-                        titleText.text= metadata.title
+                        titleText.text = metadata.title
                         artistText.text = metadata.artist
 
-                        if(metadata.artworkUri != null && metadata.artworkUri.toString().isNotEmpty()){
+                        if (metadata.artworkUri != null && metadata.artworkUri.toString()
+                                .isNotEmpty()
+                        ) {
                             lifecycleScope.launch {
                                 runCatching {
-
                                     val request = ImageRequest.Builder(this@MainActivity)
                                         .data(metadata.artworkUri)
                                         .allowHardware(false) // Required to get Bitmap for Palette
@@ -172,13 +262,12 @@ class MainActivity : AppCompatActivity() {
                                             imgBackground.setBackgroundColor(dominantColor)
                                             albumImage.setBackgroundColor(Color.TRANSPARENT)
 
-                                            Blurry.with(this@MainActivity).radius(25)
-                                                .sampling(4)
+                                            Blurry.with(this@MainActivity).radius(25).sampling(4)
                                                 .from(bitmap).into(imgBackground)
 
                                             showAndSetArtOnVisibilityBase(artwork = drawable)
                                         }
-                                    }else {
+                                    } else {
                                         setDefaultArtworkAndBackground()
                                     }
                                 }.onFailure {
@@ -187,7 +276,6 @@ class MainActivity : AppCompatActivity() {
                             }
 
                         }
-
 
 
                     }
@@ -320,48 +408,6 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    @RequiresApi(Build.VERSION_CODES.S)
-    fun Bitmap.blur(context: Context, radius: Float): Bitmap {
-        val renderEffect = RenderEffect.createBlurEffect(radius, radius, Shader.TileMode.CLAMP)
-
-        val renderNode = RenderNode("blur_node").apply {
-            setPosition(0, 0, width, height)
-            val canvas = beginRecording()
-            canvas.drawBitmap(this@blur, 0f, 0f, null)
-            endRecording()
-            setRenderEffect(renderEffect)
-        }
-
-        val output = Bitmap.createBitmap(width, height, config ?: Bitmap.Config.ARGB_8888)
-
-        val hardwareRenderer = HardwareRenderer().apply {
-            setContentRoot(renderNode)
-            setSurface(Surface(SurfaceTexture(false).apply {
-                setDefaultBufferSize(width, height)
-                detachFromGLContext() // Detach from GL as we only want to render to bitmap
-            }))
-            setLightSourceAlpha(0.5f, 0.5f)
-            setOpaque(false)
-        }
-
-        // Render the node into the bitmap
-        val syncResult = hardwareRenderer.createRenderRequest()
-            .setWaitForPresent(true)
-            .syncAndDraw()
-
-        // Now draw the RenderNode's output into a Bitmap using PixelCopy (requires real SurfaceView or View)
-        // But since that's complex for offscreen, we fall back to not doing it directly here.
-        // Simplest alternative is to just use Paint.setRenderEffect(), or use View.draw() in a real UI.
-
-        hardwareRenderer.destroy() // Clean up
-
-        // Alternative simple blur if not showing in UI: fallback (paint-based blur)
-        val fallback = createBitmap(width, height, config ?: Bitmap.Config.ARGB_8888)
-        val fallbackCanvas = Canvas(fallback)
-        // val paint = Paint().apply { setRenderEffect(renderEffect) }
-        // fallbackCanvas.drawBitmap(this, 0f, 0f, paint)
-        return fallback
-    }
 
 
 
