@@ -63,6 +63,8 @@ dependencies {
 
     implementation("androidx.media3:media3-ui:1.2.1")
 
+    implementation("androidx.media3:media3-exoplayer-smoothstreaming:1.2.1")
+
     // HLS support (adaptive streaming)
     implementation("androidx.media3:media3-exoplayer-hls:1.2.1")
 
