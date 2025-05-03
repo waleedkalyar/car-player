@@ -5,7 +5,6 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.os.Build
@@ -16,28 +15,26 @@ import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Metadata
-import androidx.media3.common.MimeTypes
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.source.ProgressiveMediaSource
+import androidx.media3.extractor.metadata.icy.IcyHeaders
 import androidx.media3.extractor.metadata.icy.IcyInfo
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import coil.imageLoader
 import coil.request.ImageRequest
 import com.example.carplayer.shared.R
+import com.example.carplayer.shared.database.CarPlayerDatabase
 import com.example.carplayer.shared.models.TrackAlbumModel
 import com.example.carplayer.shared.network.api.lastFmApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import okhttp3.OkHttpClient
+import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
-import java.io.InputStream
-import java.net.HttpURLConnection
-import java.net.URL
 import java.util.UUID
 
 
@@ -52,6 +49,8 @@ class MyMediaService : MediaSessionService() {
     lateinit var defaultArtWorkUri: Uri
 
 
+    lateinit var database: CarPlayerDatabase
+
     val mediaItems: MutableList<MediaItem> = mutableListOf()
 
 
@@ -59,55 +58,41 @@ class MyMediaService : MediaSessionService() {
     @OptIn(UnstableApi::class)
     override fun onCreate() {
         super.onCreate()
-
+        database = CarPlayerDatabase.getInstance(this@MyMediaService)
         isRunning = true
 
         defaultArtWorkUri =
             "android.resource://${packageName}/${R.drawable.default_album_art}".toUri()
 
 
+//        mediaItems.add(
+//            MediaItem.Builder().setUri("http://pewaukee.loginto.me:49000/stream2")
+//                .setMimeType(MimeTypes.AUDIO_MPEG)
+//                .setMediaMetadata(
+//                    MediaMetadata.Builder()
+//                        .setArtworkUri(defaultArtWorkUri)
+//                        .setTitle("---")
+//                        .setArtist("")
+//                        .setDescription("local")
+//                        .build()
+//                )
+//                .build()
+//        )
+//        mediaItems.add(
+//            MediaItem.Builder().setUri("https://stream-dc1.radioparadise.com/aac-320")
+//                .setMediaMetadata(
+//                    MediaMetadata.Builder()
+//                        .setArtworkUri(defaultArtWorkUri)
+//                        .setTitle("---")
+//                        .setArtist("")
+//                        .setDescription("local")
+//                        .build()
+//                )
+//                .build()
+//        )
 
+//        mediaItems.add(MediaItem.Builder().setUri("http://pewaukee.loginto.me:33000/0.ts").build())
 
-        mediaItems.add(
-            MediaItem.Builder().setUri("http://pewaukee.loginto.me:49000/stream2")
-                .setMimeType(MimeTypes.AUDIO_MPEG)
-                .setMediaMetadata(
-                    MediaMetadata.Builder()
-                        .setArtworkUri(defaultArtWorkUri)
-                        .setTitle("---")
-                        .setArtist("")
-                        .setDescription("local")
-                        .build()
-                )
-                .build()
-        )
-        mediaItems.add(
-            MediaItem.Builder().setUri("https://stream-dc1.radioparadise.com/aac-320")
-                .setMediaMetadata(
-                    MediaMetadata.Builder()
-                        .setArtworkUri(defaultArtWorkUri)
-                        .setTitle("---")
-                        .setArtist("")
-                        .setDescription("local")
-                        .build()
-                )
-                .build()
-        )
-
-//        mediaItems.add(MediaItem.Builder().setUri("https://www.bbc.co.uk/sounds/play/live/bbc_radio_fourfm")
-//            .setMediaMetadata(MediaMetadata.Builder()
-//                .setArtworkUri(defaultArtWorkUri)
-//                .setTitle("---")
-//                .setArtist("")
-//                .setDescription("local")
-//                .build())
-//            .build())
-
-
-        val okHttpClient = OkHttpClient.Builder().build()
-//        val dataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
-//            .setUserAgent("CarPlayer")
-//            .setDefaultRequestProperties(mapOf("Icy-MetaData" to "1"))
 
         val httpDataSourceFactory = DefaultHttpDataSource.Factory()
             .setAllowCrossProtocolRedirects(true)
@@ -115,30 +100,30 @@ class MyMediaService : MediaSessionService() {
             .setDefaultRequestProperties(mapOf("Icy-MetaData" to "1"))
 
 
-        val mediaSourceFactory = DefaultMediaSourceFactory(httpDataSourceFactory)
-
-//       val source = ProgressiveMediaSource.Factory(dataSourceFactory)
-//        val renderersFactory = DefaultRenderersFactory(this)
-//
-//       val decoderFactory = CustomMetadataDecoderFactory()
-//
-//
-//        val extractorsFactory = DefaultExtractorsFactory()
-//            .setConstantBitrateSeekingEnabled(true)
-
-
-//       val fact = DefaultHttpDataSource.Factory()
-//           .setDefaultRequestProperties(mapOf("Icy-MetaData" to "1"))
-//        fact.setUserAgent(Util.getUserAgent(this,"just_audio"))
+        //val mediaSourceFactory = DefaultMediaSourceFactory(httpDataSourceFactory)
 
 
         player = ExoPlayer.Builder(this)
-            .setMediaSourceFactory(mediaSourceFactory)
+            .setMediaSourceFactory(ProgressiveMediaSource.Factory(httpDataSourceFactory))
             .build()
 
 
-        player?.setMediaItems(mediaItems)
+        CoroutineScope(Dispatchers.IO).launch {
+            database
+                .apply {
+                    albumsDao().listenAll().collect { items ->
+                        withContext(Dispatchers.Main) {
+                            if (items.size != player?.mediaItemCount) {
+                                player?.setMediaItems(items.map {
+                                    MediaItem.Builder().setUri(it.streamUrl).build()
+                                })
+                            }
+                        }
+                    }
+                }
+        }
 
+        // player?.setMediaItems(mediaItems)
 
 
         player?.prepare()
@@ -150,10 +135,17 @@ class MyMediaService : MediaSessionService() {
                 super.onMetadata(metadata)
                 for (i in 0 until metadata.length()) {
                     val entry = metadata[i]
+                    if (entry is IcyHeaders) {
+                        Log.d(
+                            "Metadata",
+                            "onMetadata: Header found -> ${entry.url}, name -> ${entry.name}, genre -> ${entry.genre}"
+                        )
+                    }
                     if (entry is IcyInfo) {
                         Log.d("Metadata", "Metadata entry: $entry")
                         val title = entry.title
                         val url = entry.url
+
                         Log.d("Metadata", "Title: $title, URL: $url")
                         val (artist, track) = entry.title?.split(" - ").let {
                             it?.getOrNull(0).orEmpty() to it?.getOrNull(1).orEmpty()
@@ -171,7 +163,7 @@ class MyMediaService : MediaSessionService() {
                                     updateMediaItem(
                                         title = title,
                                         artist = artist,
-                                        imageUrl = (album?.imageUrl ?: defaultArtWorkUri).toString()
+                                        imageUrl = (if (album?.imageUrl.isNullOrBlank()) defaultArtWorkUri else album.imageUrl).toString()
                                     )
 
                                 }
@@ -188,8 +180,15 @@ class MyMediaService : MediaSessionService() {
                                     }
                                     // updateArtwork(it)
                                 } else {
-                                    // Sometimes url is just a website — needs extra handling
-                                    Log.w("Metadata", "StreamUrl is not an image link: $it")
+                                    CoroutineScope(Dispatchers.Main).launch {
+                                        updateMediaItem(
+                                            title = title.toString(),
+                                            artist = artist,
+                                            imageUrl = defaultArtWorkUri.toString()
+                                        )
+                                        // Sometimes url is just a website — needs extra handling
+                                        Log.w("Metadata", "StreamUrl is not an image link: $it")
+                                    }
 
                                 }
                             }
@@ -290,11 +289,20 @@ class MyMediaService : MediaSessionService() {
     }
 
 
-    fun updateMediaItem(title: String, artist: String, imageUrl: String) {
+    suspend fun updateMediaItem(title: String, artist: String, imageUrl: String) {
         var index = player?.currentMediaItemIndex ?: 0
+
+        val safe = isImageSizeSafe(imageUrl)
+        val artworkUri = if (safe) imageUrl.toUri() else defaultArtWorkUri
+
+        database.albumsDao().markOnlyOneAsPlaying(
+            player?.currentMediaItem?.localConfiguration?.uri?.toString()
+                .toString()
+        )
+
         val updatedMediaMetadata =
             player?.currentMediaItem?.mediaMetadata?.buildUpon()
-                ?.setArtworkUri(imageUrl.toUri())
+                ?.setArtworkUri(artworkUri)
                 ?.setTitle(title)
                 // ?.setArtist(artist)
                 ?.build()
@@ -312,6 +320,8 @@ class MyMediaService : MediaSessionService() {
                 index,
                 mediaItem
             )
+
+
         }
 
     }
@@ -336,7 +346,6 @@ class MyMediaService : MediaSessionService() {
             player?.replaceMediaItem(index, updatedItem)
         }
     }
-
 
 
     override fun onDestroy() {
@@ -365,7 +374,8 @@ class MyMediaService : MediaSessionService() {
                     id = response.track?.mbid ?: UUID.randomUUID().toString(),
                     title = title,
                     artist = artist,
-                    imageUrl = imageUrl.toString()
+                    imageUrl = imageUrl.toString(),
+                    streamUrl = ""
                 )
             } else {
                 // Resize the image if necessary
@@ -378,7 +388,8 @@ class MyMediaService : MediaSessionService() {
                     id = response.track?.mbid ?: UUID.randomUUID().toString(),
                     title = title,
                     artist = artist,
-                    imageUrl = resizedImageUrl.toString()
+                    imageUrl = resizedImageUrl.toString(),
+                    streamUrl = ""
                 )
             }
 
@@ -388,7 +399,8 @@ class MyMediaService : MediaSessionService() {
                 id = UUID.randomUUID().toString(),
                 title = track,
                 artist = artist,
-                imageUrl = defaultArtWorkUri.toString()
+                imageUrl = defaultArtWorkUri.toString(),
+                streamUrl = ""
             )
 
         }
@@ -415,6 +427,27 @@ class MyMediaService : MediaSessionService() {
         val outputStream = ByteArrayOutputStream()
         this.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
         return outputStream.toByteArray()
+    }
+
+
+    suspend fun isImageSizeSafe(imageUrl: String, maxBytes: Long = 5_000_000): Boolean {
+        return try {
+            val request = ImageRequest.Builder(this)
+                .data(imageUrl)
+                .allowHardware(false) // needed to access bitmap
+                .size(512) // safely resize large images
+                .build()
+
+            val result = this.imageLoader.execute(request)
+            val bitmap = (result.drawable as? BitmapDrawable)?.bitmap
+
+            val byteSize = bitmap?.allocationByteCount ?: 0
+            Log.d("ImageSafety", "Decoded bitmap size = $byteSize bytes")
+
+            byteSize < maxBytes
+        } catch (e: Exception) {
+            false
+        }
     }
 
 

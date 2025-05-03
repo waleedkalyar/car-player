@@ -4,4 +4,10 @@
         <string name="play_pause">Play/Pause</string>
         <string name="fast_forward">Fast Forward</string>
         <string name="album_image">album image</string>
+    <string name="close">Close</string>
+        <string name="https_example_com">https://example.com</string>
+        <string name="enter_url">Enter URL</string>
+        <string name="back">Back</string>
+        <string name="album_list">Streams</string>
+        <string name="add_to_playlist">Add to playlist</string>
 </resources>

@@ -74,6 +74,8 @@ dependencies {
 
     implementation("jp.wasabeef:blurry:4.0.1")
 
+    implementation("com.airbnb.android:lottie:6.6.6")
+
 
 
 

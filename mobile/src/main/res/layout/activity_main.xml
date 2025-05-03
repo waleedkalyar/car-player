@@ -80,4 +80,16 @@
         app:layout_constraintStart_toStartOf="@id/player_view"
         app:layout_constraintEnd_toEndOf="@id/player_view" />
 
+    <ImageButton
+        android:id="@+id/btnAddUrl"
+        android:layout_width="34dp"
+        android:layout_height="34dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_margin="16dp"
+        android:scaleType="fitXY"
+        android:background="?actionBarItemBackground"
+        android:src="@drawable/ic_playlist"
+        app:tint="@color/white" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

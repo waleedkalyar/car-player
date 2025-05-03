@@ -40,7 +40,9 @@ import androidx.palette.graphics.Palette
 import coil.imageLoader
 import coil.request.ImageRequest
 import com.example.carplayer.databinding.ActivityMainBinding
+import com.example.carplayer.dialogs.AlbumListDialogFragment
 import com.example.carplayer.shared.services.MyMediaService
+import com.example.carplayer.sheets.AddUrlBottomSheet
 import com.google.common.util.concurrent.ListenableFuture
 import jp.wasabeef.blurry.Blurry
 import kotlinx.coroutines.delay
@@ -58,6 +60,9 @@ class MainActivity : AppCompatActivity() {
         android.Manifest.permission.BLUETOOTH, android.Manifest.permission.BLUETOOTH_ADMIN
     )
 
+
+    val serviceIntent by lazy { Intent(this, MyMediaService::class.java) }
+
     // Add new permissions for Android 12+ and location
     @SuppressLint("InlinedApi")
     private val android12PlusPermissions = listOf(
@@ -72,13 +77,16 @@ class MainActivity : AppCompatActivity() {
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             Log.d("Bluetooth", "Bluetooth enabled by user")
-            Toast.makeText(this,"Bluetooth is enabled, connect media with your car", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                this,
+                "Bluetooth is enabled, connect media with your car",
+                Toast.LENGTH_SHORT
+            ).show()
 
         } else {
             Log.e("Bluetooth", "Bluetooth not enabled by user")
         }
     }
-
 
 
     companion object {
@@ -99,20 +107,25 @@ class MainActivity : AppCompatActivity() {
 
         initViews()
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            Log.d("MediaIntent", "current pkg activity -> ${MainActivity::class.java.packageName}")
+        }
+
+
         lifecycleScope.launch {
             delay(2500L)
             checkAndRequestBluetoothPermissions()
         }
 
 
-
-
     }
 
     fun initViews() {
         // Start MediaService if not already running
-        val serviceIntent = Intent(this, MyMediaService::class.java)
-        startForegroundService(serviceIntent)
+        if (!MyMediaService.isRunning) {
+
+            startForegroundService(serviceIntent)
+        }
 
         // Connect to MediaSession
         connectToMediaSession()
@@ -122,8 +135,18 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-    private fun initClickListeners() {
 
+    private fun initClickListeners() = with(binding) {
+        btnAddUrl.setOnClickListener {
+//            val bottomSheet = AddUrlBottomSheet { url ->
+//                // Save or handle the URL here
+//                //Toast.makeText(this, "URL Saved: $url", Toast.LENGTH_SHORT).show()
+//            }
+//            bottomSheet.show(supportFragmentManager, "AddUrlBottomSheet")
+            AlbumListDialogFragment().apply {
+                show(supportFragmentManager,"albums")
+            }
+        }
     }
 
 
@@ -174,10 +197,10 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    fun enableBluetoothAndConnectToCar(){
+    fun enableBluetoothAndConnectToCar() {
         val adapter = getBluetoothAdapter(this)
         adapter?.let { bluetoothAdapter ->
-            if(!bluetoothAdapter.isEnabled) {
+            if (!bluetoothAdapter.isEnabled) {
                 val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
                 enableBluetoothLauncher.launch(enableBtIntent)
             }
@@ -185,7 +208,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun getBluetoothAdapter(context: Context): BluetoothAdapter? {
-        val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+        val bluetoothManager =
+            context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
         return bluetoothManager?.adapter
     }
 
@@ -207,14 +231,20 @@ class MainActivity : AppCompatActivity() {
             MediaController.Builder(this@MainActivity, sessionToken).buildAsync()
 
 
-        val titleText = findViewById<TextView>(R.id.track_title)
-        val artistText = findViewById<TextView>(R.id.track_artist)
+
 
         mediaControllerFuture?.addListener({
             try {
                 val controller = mediaControllerFuture?.get()
                 mediaController = controller
                 playerView.player = controller
+
+                controller?.mediaMetadata?.let { metadata ->
+                    if (!metadata.title.isNullOrEmpty()) {
+                        handleMetadata(metadata) // <- use your update UI code here
+                        updateControllerOnMediaTrack(controller.currentTracks)
+                    }
+                }
 
                 // call this to load meta data for first item.. after that it will update from on metadata changed
 
@@ -228,108 +258,20 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
 
-                    override fun onIsLoadingChanged(isLoading: Boolean) {
-                        // loadingSpinner.visibility = if (isLoading) View.VISIBLE else View.GONE
-                    }
-
 
                     @SuppressLint("UseKtx")
                     override fun onMediaMetadataChanged(metadata: MediaMetadata) {
-                        titleText.text = metadata.title
-                        artistText.text = metadata.artist
-
-                        if (metadata.artworkUri != null && metadata.artworkUri.toString()
-                                .isNotEmpty()
-                        ) {
-                            lifecycleScope.launch {
-                                runCatching {
-                                    val request = ImageRequest.Builder(this@MainActivity)
-                                        .data(metadata.artworkUri)
-                                        .allowHardware(false) // Required to get Bitmap for Palette
-                                        .build()
-
-                                    val result = this@MainActivity.imageLoader.execute(request)
-                                    val drawable = result.drawable
-
-                                    if (drawable != null) {
-                                        albumImage.setImageDrawable(drawable)
-                                        // Extract dominant color from bitmap using Palette
-                                        val bitmap = (drawable as BitmapDrawable).bitmap
-                                        Palette.from(bitmap).generate { palette ->
-                                            val dominantColor =
-                                                palette?.getDominantColor(Color.BLACK)
-                                                    ?: Color.BLACK
-                                            imgBackground.setBackgroundColor(dominantColor)
-                                            albumImage.setBackgroundColor(Color.TRANSPARENT)
-
-                                            Blurry.with(this@MainActivity).radius(25).sampling(4)
-                                                .from(bitmap).into(imgBackground)
-
-                                            showAndSetArtOnVisibilityBase(artwork = drawable)
-                                        }
-                                    } else {
-                                        setDefaultArtworkAndBackground()
-                                    }
-                                }.onFailure {
-                                    setDefaultArtworkAndBackground()
-                                }
-                            }
-
-                        }
-
-
+                        handleMetadata(metadata)
                     }
 
-                    override fun onIsPlayingChanged(isPlaying: Boolean) {
-//                        binding.playPauseButton.setImageResource(
-//                            if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play
-//                        )
-                    }
 
                     override fun onTracksChanged(tracks: Tracks) {
                         super.onTracksChanged(tracks)
-                        var hasVideo = false
-                        var hasAudio = false
+                       updateControllerOnMediaTrack(tracks)
 
-                        for (group in tracks.groups) {
-                            for (i in 0 until group.length) {
-                                if (group.isTrackSelected(i)) {
-                                    val format = group.getTrackFormat(i)
-                                    when {
-                                        format.sampleMimeType?.startsWith("video") == true -> hasVideo =
-                                            true
-
-                                        format.sampleMimeType?.startsWith("audio") == true -> hasAudio =
-                                            true
-                                    }
-                                }
-                            }
-                        }
-
-                        Log.d("TRACKS", "Video: $hasVideo, Audio: $hasAudio")
-
-                        isCurrentVideo = hasVideo
-                        updateImageViewVisibilityBasedOnWidth()
-
-                        // You can now show/hide views based on what's active:
-                        if (hasVideo) {
-                            // Show video surface (PlayerView will do this by default)
-                            playerView.controllerShowTimeoutMs = 3000 // e.g., 3 seconds
-                            playerView.controllerAutoShow = true
-                            playerView.controllerHideOnTouch = true
-                            playerView.videoSurfaceView?.visibility = View.VISIBLE
-                        } else if (hasAudio) {
-                            // Maybe show album art, metadata, etc.
-                            playerView.controllerShowTimeoutMs = 0
-                            playerView.showController()
-                            playerView.controllerHideOnTouch = false
-                            playerView.videoSurfaceView?.visibility = View.INVISIBLE
-                            playerView.setBackgroundColor(Color.TRANSPARENT)
-                            playerView.setShutterBackgroundColor(Color.TRANSPARENT)
-                            imgBackground.visibility = View.VISIBLE
-                            // playerView.defaultArtwork = Color.TRANSPARENT.toDrawable()
-                        }
                     }
+
+
 
                 })
 
@@ -340,9 +282,138 @@ class MainActivity : AppCompatActivity() {
         }, ContextCompat.getMainExecutor(this@MainActivity))
     }
 
+    @OptIn(UnstableApi::class)
+    private fun updateControllerOnMediaTrack(tracks: Tracks) = with(binding){
+        var hasVideo = hasVideoTrack(tracks)
+        var  hasAudio = hasAudioTrack(tracks)
+
+        Log.d("TRACKS", "Video: $hasVideo, Audio: $hasAudio")
+
+        isCurrentVideo = hasVideo
+        updateImageViewVisibilityBasedOnWidth()
+
+        // You can now show/hide views based on what's active:
+        if (hasVideo) {
+            // Show video surface (PlayerView will do this by default)
+            playerView.controllerShowTimeoutMs = 3000 // e.g., 3 seconds
+            playerView.controllerAutoShow = true
+            playerView.controllerHideOnTouch = true
+            playerView.videoSurfaceView?.visibility = View.VISIBLE
+        } else if (hasAudio) {
+            // Maybe show album art, metadata, etc.
+            playerView.controllerShowTimeoutMs = 0
+            playerView.showController()
+            playerView.controllerHideOnTouch = false
+            playerView.videoSurfaceView?.visibility = View.INVISIBLE
+            playerView.setBackgroundColor(Color.TRANSPARENT)
+            playerView.setShutterBackgroundColor(Color.TRANSPARENT)
+            imgBackground.visibility = View.VISIBLE
+            // playerView.defaultArtwork = Color.TRANSPARENT.toDrawable()
+        }
+    }
+
+    private fun hasVideoTrack(tracks: Tracks) : Boolean{
+        var hasVideo = false
+        var hasAudio = false
+
+        for (group in tracks.groups) {
+            for (i in 0 until group.length) {
+                if (group.isTrackSelected(i)) {
+                    val format = group.getTrackFormat(i)
+                    when {
+                        format.sampleMimeType?.startsWith("video") == true -> hasVideo =
+                            true
+
+                        format.sampleMimeType?.startsWith("audio") == true -> hasAudio =
+                            true
+                    }
+                }
+            }
+        }
+
+        return hasVideo
+    }
+
+    private fun hasAudioTrack(tracks: Tracks) : Boolean{
+        var hasVideo = false
+        var hasAudio = false
+
+        for (group in tracks.groups) {
+            for (i in 0 until group.length) {
+                if (group.isTrackSelected(i)) {
+                    val format = group.getTrackFormat(i)
+                    when {
+                        format.sampleMimeType?.startsWith("video") == true -> hasVideo =
+                            true
+
+                        format.sampleMimeType?.startsWith("audio") == true -> hasAudio =
+                            true
+                    }
+                }
+            }
+        }
+
+        return hasAudio
+    }
+
+
+    @OptIn(UnstableApi::class)
+    private fun handleMetadata(metadata: MediaMetadata) = with(binding) {
+        val title = metadata.title
+        val artist = metadata.artist
+        val artworkUri = metadata.artworkUri
+
+        val titleText = findViewById<TextView>(R.id.track_title)
+        val artistText = findViewById<TextView>(R.id.track_artist)
+
+        titleText.text = title
+        artistText.text = artist
+
+        if (metadata.artworkUri != null && metadata.artworkUri.toString()
+                .isNotEmpty()
+        ) {
+            lifecycleScope.launch {
+                runCatching {
+                    val request = ImageRequest.Builder(this@MainActivity)
+                        .data(metadata.artworkUri)
+                        .allowHardware(false) // Required to get Bitmap for Palette
+                        .build()
+
+                    val result = this@MainActivity.imageLoader.execute(request)
+                    val drawable = result.drawable
+
+                    if (drawable != null) {
+                        albumImage.setImageDrawable(drawable)
+                        // Extract dominant color from bitmap using Palette
+                        val bitmap = (drawable as BitmapDrawable).bitmap
+                        Palette.from(bitmap).generate { palette ->
+                            val dominantColor =
+                                palette?.getDominantColor(Color.BLACK)
+                                    ?: Color.BLACK
+                            imgBackground.setBackgroundColor(dominantColor)
+                            albumImage.setBackgroundColor(Color.TRANSPARENT)
+
+                            Blurry.with(this@MainActivity).radius(25).sampling(4)
+                                .from(bitmap).into(imgBackground)
+
+                            showAndSetArtOnVisibilityBase(artwork = drawable)
+                        }
+                    } else {
+                        setDefaultArtworkAndBackground()
+                    }
+                }.onFailure {
+                    setDefaultArtworkAndBackground()
+                }
+            }
+        }
+
+    }
+
+
     override fun onDestroy() {
         super.onDestroy()
         mediaController?.release()
+        stopService(serviceIntent)
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -406,10 +477,6 @@ class MainActivity : AppCompatActivity() {
         Blurry.with(this@MainActivity).radius(25).sampling(4).from(placeholder?.toBitmap())
             .into(imgBackground)
     }
-
-
-
-
 
 
 }
