@@ -14,6 +14,9 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
+        flatDir {
+            dirs("${rootDir}/browser/libs")
+        }
         google()
         mavenCentral()
     }
@@ -23,4 +26,4 @@ rootProject.name = "CarPlayer"
 include(":mobile")
 include(":automotive")
 include(":shared")
- 
+include(":browser")

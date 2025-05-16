@@ -40,12 +40,10 @@
 27        </service>
 28
 29        <!-- Android Auto support -->
-30        <meta-data
-30-->/Users/user/Documents/Android/car-player/shared/src/main/AndroidManifest.xml:26:9-28:84
-31            android:name="android.media.session"
-31-->/Users/user/Documents/Android/car-player/shared/src/main/AndroidManifest.xml:27:13-49
-32            android:value="com.example.carplayer.shared.services.MyMediaService" />
-32-->/Users/user/Documents/Android/car-player/shared/src/main/AndroidManifest.xml:28:13-81
-33    </application>
-34
-35</manifest>
+30        <!-- <meta-data -->
+31        <!-- android:name="android.media.session" -->
+32        <!-- android:value="com.example.carplayer.shared.services.MyMediaService" /> -->
+33
+34    </application>
+35
+36</manifest>

@@ -3,18 +3,21 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_gravity="bottom"
     android:animateLayoutChanges="false"
+    tools:background="@color/black"
     android:background="@android:color/transparent"
     android:gravity="start"
     android:orientation="vertical"
+    android:id="@+id/exo_controller"
     android:padding="8dp">
 
     <TextView
         android:id="@+id/track_title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Unkwon Title"
+        android:text="Unknown Title"
         android:textColor="@android:color/white"
         android:textSize="18sp"
         android:layout_marginTop="16dp"
@@ -62,7 +65,7 @@
                 android:paddingEnd="8dp" />
 
             <TextView
-                android:id="@+id/exo_duration"
+                android:id="@+id/exo_duration1"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="00:00"

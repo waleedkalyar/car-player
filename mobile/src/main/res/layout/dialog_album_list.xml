@@ -65,11 +65,27 @@
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <!-- RecyclerView for Albums -->
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/tabLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:tabMode="fixed"
+        app:tabIndicatorFullWidth="true"
+        app:tabSelectedTextColor="@color/white"
+        app:tabIndicatorColor="@color/white"
+        app:tabTextColor="#9B9B9B"
+        android:background="@color/black"
+        app:tabGravity="fill"/>
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/pager"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvAlbums"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         tools:listitem="@layout/item_album"
+        android:visibility="gone"
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         tools:itemCount="5"
         android:layout_marginTop="16dp" />

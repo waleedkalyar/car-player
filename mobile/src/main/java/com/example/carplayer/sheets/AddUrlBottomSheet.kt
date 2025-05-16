@@ -1,11 +1,13 @@
 package com.example.carplayer.sheets
 
+import android.content.Context
 import android.os.Build
 import android.os.Bundle
 import android.util.Patterns
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import com.example.carplayer.R
@@ -14,7 +16,7 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 
 class AddUrlBottomSheet(
-    private val onSave: (String) -> Unit
+    private val onSave: (title: String, url: String) -> Unit
 ) : BottomSheetDialogFragment() {
 
     private var _binding: BottomSheetAddUrlBinding? = null
@@ -33,10 +35,21 @@ class AddUrlBottomSheet(
             binding.etUrl.textCursorDrawable = ContextCompat.getDrawable(requireContext(), R.drawable.cursor_color)
         }
 
+        binding.etUrl.postDelayed({
+            binding.etUrl.requestFocus()
+            val imm = requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
+        }, 200)
+
         binding.btnSaveUrl.setOnClickListener {
+            val title = binding.etTitle.text.toString().trim()
             val url = binding.etUrl.text.toString().trim()
-            if (url.isNotEmpty() && Patterns.WEB_URL.matcher(url).matches()) {
-                onSave(url)
+            if(title.isEmpty()){
+                Toast.makeText(requireContext(), "Please enter a title", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+           else if (url.isNotEmpty() && Patterns.WEB_URL.matcher(url).matches()) {
+                onSave(title,url)
                 dismiss()
             } else {
                 Toast.makeText(requireContext(), "Please enter a valid URL", Toast.LENGTH_SHORT).show()

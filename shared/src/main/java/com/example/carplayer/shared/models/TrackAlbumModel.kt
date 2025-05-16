@@ -13,4 +13,5 @@ data class TrackAlbumModel(
     var imageUrl: String,
     var streamUrl: String,
     var isPlaying: Boolean = false,
+    var isVideo: Boolean = false,
 )

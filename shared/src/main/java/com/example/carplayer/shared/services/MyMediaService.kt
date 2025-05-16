@@ -6,12 +6,16 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.net.Uri
 import android.os.Build
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.annotation.RequiresApi
 import androidx.core.net.toUri
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Metadata
@@ -19,7 +23,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.ProgressiveMediaSource
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.extractor.metadata.icy.IcyHeaders
 import androidx.media3.extractor.metadata.icy.IcyInfo
 import androidx.media3.session.MediaSession
@@ -100,11 +104,11 @@ class MyMediaService : MediaSessionService() {
             .setDefaultRequestProperties(mapOf("Icy-MetaData" to "1"))
 
 
-        //val mediaSourceFactory = DefaultMediaSourceFactory(httpDataSourceFactory)
+        val mediaSourceFactory = DefaultMediaSourceFactory(httpDataSourceFactory)
 
 
         player = ExoPlayer.Builder(this)
-            .setMediaSourceFactory(ProgressiveMediaSource.Factory(httpDataSourceFactory))
+            .setMediaSourceFactory(mediaSourceFactory)//ProgressiveMediaSource.Factory(httpDataSourceFactory)
             .build()
 
 
@@ -113,7 +117,12 @@ class MyMediaService : MediaSessionService() {
                 .apply {
                     albumsDao().listenAll().collect { items ->
                         withContext(Dispatchers.Main) {
+
                             if (items.size != player?.mediaItemCount) {
+                                Log.d(
+                                    "MyMediaService",
+                                    "onCreate: new item for play found and run playing function"
+                                )
                                 player?.setMediaItems(items.map {
                                     MediaItem.Builder().setUri(it.streamUrl).build()
                                 })
@@ -124,6 +133,46 @@ class MyMediaService : MediaSessionService() {
         }
 
         // player?.setMediaItems(mediaItems)
+
+
+//        val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
+//
+//        val focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+//            .setAudioAttributes(
+//            android.media.AudioAttributes.Builder()
+//                .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+//                .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
+//                .build()
+//        )
+//            .setOnAudioFocusChangeListener { focusChange ->
+//                when (focusChange) {
+//                    AudioManager.AUDIOFOCUS_GAIN -> {
+//                        player?.playWhenReady = true
+//                    }
+//                    AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+//                        player?.volume = 0.2f
+//                    }
+//                    AudioManager.AUDIOFOCUS_LOSS_TRANSIENT, AudioManager.AUDIOFOCUS_LOSS -> {
+//                        player?.playWhenReady = false
+//                    }
+//                }
+//            }
+//            .build()
+//
+//        val result = audioManager.requestAudioFocus(focusRequest)
+//        if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+//            player?.playWhenReady = true
+//        } else {
+//            Log.d(TAG, "onCreate: audio focus not granted -> ${result.toString()}")
+//        }
+
+        val audioAttributes = AudioAttributes.Builder()
+            .setUsage(C.USAGE_MEDIA)
+            .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+            .build()
+
+        player?.setAudioAttributes(audioAttributes, true)
+
 
 
         player?.prepare()
@@ -154,17 +203,24 @@ class MyMediaService : MediaSessionService() {
                         if (url == null) {
                             CoroutineScope(Dispatchers.Main).launch {
                                 title?.let {
+
                                     val album = fetchAlbumArt(
                                         artist,
                                         track,
                                         "c62a1d89e34fa71897a4bb4df15e8510"
                                     )
-                                    Log.d("Metadata", "Album -> $album")
+                                    Log.d("Metadata", "Album -> ${album?.imageUrl}")
                                     updateMediaItem(
-                                        title = title,
+                                        title = track,
                                         artist = artist,
-                                        imageUrl = (if (album?.imageUrl.isNullOrBlank()) defaultArtWorkUri else album.imageUrl).toString()
+                                        imageUrl = album?.imageUrl ?: defaultArtWorkUri.toString()
                                     )
+
+//                                    updateMediaItem(
+//                                        title = title,
+//                                        artist = artist,
+//                                        imageUrl = defaultArtWorkUri.toString()
+//                                    )
 
                                 }
                             }
@@ -173,7 +229,7 @@ class MyMediaService : MediaSessionService() {
                                 if (it.endsWith(".jpg") || it.endsWith(".png")) {
                                     CoroutineScope(Dispatchers.Main).launch {
                                         updateMediaItem(
-                                            title = title.toString(),
+                                            title = artist,
                                             artist = artist,
                                             imageUrl = url
                                         )
@@ -182,7 +238,7 @@ class MyMediaService : MediaSessionService() {
                                 } else {
                                     CoroutineScope(Dispatchers.Main).launch {
                                         updateMediaItem(
-                                            title = title.toString(),
+                                            title = track,
                                             artist = artist,
                                             imageUrl = defaultArtWorkUri.toString()
                                         )
@@ -196,6 +252,17 @@ class MyMediaService : MediaSessionService() {
 
 
                     }
+                }
+            }
+
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                super.onMediaItemTransition(mediaItem, reason)
+                CoroutineScope(Dispatchers.Main).launch {
+                    updateMediaItem(
+                        title = mediaItem?.mediaMetadata?.title.toString(),
+                        artist = mediaItem?.mediaMetadata?.artist.toString(),
+                        imageUrl = defaultArtWorkUri.toString()
+                    )
                 }
             }
 
@@ -292,19 +359,31 @@ class MyMediaService : MediaSessionService() {
     suspend fun updateMediaItem(title: String, artist: String, imageUrl: String) {
         var index = player?.currentMediaItemIndex ?: 0
 
+        Log.d("Update metadata", "updateMediaItem:  uri is -> $imageUrl")
+
         val safe = isImageSizeSafe(imageUrl)
         val artworkUri = if (safe) imageUrl.toUri() else defaultArtWorkUri
 
         database.albumsDao().markOnlyOneAsPlaying(
             player?.currentMediaItem?.localConfiguration?.uri?.toString()
-                .toString()
+                .toString(),
+            title = title,
+            artist = artist,
+            artwork = artworkUri.toString()
         )
+
+//        Log.d("Artwork", "updateMediaItem: url -> $artworkUri")
+//        val bitmpa = this.toImageBitmap(artworkUri.toString())
+//        Log.d("Artwork", "updateMediaItem: bitmap -> $bitmpa")
+//        Log.d("Artwork", "updateMediaItem: array -> ${bitmpa?.toByteArray()}")
 
         val updatedMediaMetadata =
             player?.currentMediaItem?.mediaMetadata?.buildUpon()
                 ?.setArtworkUri(artworkUri)
+                //  ?.setArtworkData(this.toImageBitmap(artworkUri.toString())?.toByteArray(), MediaMetadata.PICTURE_TYPE_FRONT_COVER)
                 ?.setTitle(title)
-                // ?.setArtist(artist)
+                ?.setArtist(artist)
+                ?.setSubtitle(artist)
                 ?.build()
 
         val updatedMediaItem = updatedMediaMetadata?.let {
@@ -367,31 +446,35 @@ class MyMediaService : MediaSessionService() {
             var title: String = response.track?.album?.title.toString()
             var artist = response.track?.artist?.name.toString()
 
-
-
-            if (imageUrl.isNullOrEmpty()) {
-                return TrackAlbumModel(
-                    id = response.track?.mbid ?: UUID.randomUUID().toString(),
-                    title = title,
-                    artist = artist,
-                    imageUrl = imageUrl.toString(),
-                    streamUrl = ""
-                )
-            } else {
-                // Resize the image if necessary
-                val resizedImageUrl = imageUrl
-                Log.d("FetchImage", "fetchAlbumArt: resized url -> $resizedImageUrl")
-                // Now return the track information with the possibly resized image URL
-                val title = response.track?.album?.title.toString()
-                val artist = response.track?.artist?.name.toString()
-                return TrackAlbumModel(
-                    id = response.track?.mbid ?: UUID.randomUUID().toString(),
-                    title = title,
-                    artist = artist,
-                    imageUrl = resizedImageUrl.toString(),
-                    streamUrl = ""
-                )
+            if (imageUrl == null) {
+                imageUrl = defaultArtWorkUri.toString()
             }
+
+
+            //if (imageUrl.isNullOrEmpty()) {
+            return TrackAlbumModel(
+                id = response.track?.mbid ?: UUID.randomUUID().toString(),
+                title = title,
+                artist = artist,
+                imageUrl = imageUrl.toString(),
+                streamUrl = ""
+            )
+            // }
+//            else {
+//                // Resize the image if necessary
+//                val resizedImageUrl = imageUrl
+//                Log.d("FetchImage", "fetchAlbumArt: resized url -> $resizedImageUrl")
+//                // Now return the track information with the possibly resized image URL
+//                val title = response.track?.album?.title.toString()
+//                val artist = response.track?.artist?.name.toString()
+//                return TrackAlbumModel(
+//                    id = response.track?.mbid ?: UUID.randomUUID().toString(),
+//                    title = title,
+//                    artist = artist,
+//                    imageUrl = resizedImageUrl.toString(),
+//                    streamUrl = ""
+//                )
+//            }
 
         } catch (e: Exception) {
             Log.e("LastFm", "Error fetching album art: ${e.message}")

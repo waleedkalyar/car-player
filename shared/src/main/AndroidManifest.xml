@@ -23,9 +23,9 @@
         </service>
 
         <!-- Android Auto support -->
-        <meta-data
-            android:name="android.media.session"
-            android:value="com.example.carplayer.shared.services.MyMediaService" />
+<!--        <meta-data-->
+<!--            android:name="android.media.session"-->
+<!--            android:value="com.example.carplayer.shared.services.MyMediaService" />-->
 
     </application>
 

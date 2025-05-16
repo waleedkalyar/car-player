@@ -6,4 +6,11 @@
         <item name="android:windowFullscreen">true</item>
         <item name="android:backgroundDimEnabled">true</item>
     </style>
+
+
+    <style name="BottomSheetDialogTheme2" parent="Theme.Design.Light.BottomSheetDialog">
+        <item name="android:windowSoftInputMode">adjustResize</item>
+    </style>
+
+
 </resources>

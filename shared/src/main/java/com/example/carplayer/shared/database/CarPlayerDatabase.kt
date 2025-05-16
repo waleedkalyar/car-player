@@ -6,7 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.example.carplayer.shared.models.TrackAlbumModel
 
-@Database(entities = [TrackAlbumModel::class], version = 2)
+@Database(entities = [TrackAlbumModel::class], version = 4)
 abstract class CarPlayerDatabase : RoomDatabase() {
     abstract fun albumsDao() : AlbumsDao
 
@@ -23,6 +23,7 @@ abstract class CarPlayerDatabase : RoomDatabase() {
                     CarPlayerDatabase::class.java,
                     "car_player_db"
                 ).fallbackToDestructiveMigration(false) // Handles migrations
+                    .allowMainThreadQueries()
                     .build()
                 INSTANCE = instance
                 instance

@@ -1,5 +1,6 @@
 package com.example.carplayer.dialogs.adapters
 
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -58,14 +59,22 @@ class AlbumUrlsAdapter(val onPlayClick: (album: TrackAlbumModel, index:Int) -> U
 
         fun bind(album: TrackAlbumModel) = with(binding) {
 
+            Log.d("AlbumUrlsAdapter", "bind: -> ${album.title} is paying ->${album.isPlaying}")
+
             tvUrl.text = album.streamUrl
+
+            tvTitle.text = if(album.title.isEmpty()) "Unknown" else album.title
+
 
             if (album.isPlaying) {
                 btnPlay.visibility = View.GONE
                 animationView.visibility = View.VISIBLE
+                pbLoading.visibility = View.GONE
+
             } else {
                 btnPlay.visibility = View.VISIBLE
                 animationView.visibility = View.INVISIBLE
+                pbLoading.visibility = View.GONE
             }
 
             btnDelete.setOnClickListener {
@@ -74,7 +83,17 @@ class AlbumUrlsAdapter(val onPlayClick: (album: TrackAlbumModel, index:Int) -> U
                 }
             }
 
+            btnPlay.setOnClickListener {
+                root.performClick()
+            }
+
             root.setOnClickListener {
+                pbLoading.visibility = View.VISIBLE
+                animationView.visibility = View.INVISIBLE
+                btnPlay.visibility = View.GONE
+                CoroutineScope(Dispatchers.IO).launch {
+                    CarPlayerDatabase.getInstance(binding.root.context).albumsDao().resetPlaying()
+                }
                 onPlayClick.invoke(album,bindingAdapterPosition)
             }
         }

@@ -8,6 +8,8 @@ android {
     namespace = "com.example.carplayer"
     compileSdk = 35
 
+
+
     defaultConfig {
         applicationId = "com.example.carplayer"
         minSdk = 28
@@ -17,6 +19,8 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
+
+   // dynamicFeatures.add(":browser")
 
     buildTypes {
         release {
@@ -42,15 +46,18 @@ android {
 
 dependencies {
 
+    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar", "*.aar"))))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
     implementation(project(":shared"))
+    //implementation(project(":browser"))
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+
 
     // Media3 ExoPlayer
     implementation("androidx.media3:media3-exoplayer:1.2.1")
@@ -75,6 +82,11 @@ dependencies {
     implementation("jp.wasabeef:blurry:4.0.1")
 
     implementation("com.airbnb.android:lottie:6.6.6")
+
+    // for car
+    implementation("androidx.car.app:app:1.4.0")
+    implementation("androidx.car.app:app-projected:1.4.0")
+
 
 
 

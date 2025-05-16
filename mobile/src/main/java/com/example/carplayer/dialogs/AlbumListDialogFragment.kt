@@ -1,6 +1,5 @@
 package com.example.carplayer.dialogs
 
-import android.annotation.SuppressLint
 import android.content.ComponentName
 import android.os.Bundle
 import android.util.Log
@@ -10,28 +9,26 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.core.content.ContextCompat
-import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.MediaItem
-import androidx.media3.common.Timeline
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
-import androidx.recyclerview.widget.LinearLayoutManager
-import com.example.carplayer.MainActivity
-import com.example.carplayer.R
 import com.example.carplayer.databinding.DialogAlbumListBinding
-import com.example.carplayer.dialogs.adapters.AlbumAdapter
 import com.example.carplayer.dialogs.adapters.AlbumUrlsAdapter
+import com.example.carplayer.dialogs.adapters.AlbumsPagerAdapter
 import com.example.carplayer.shared.database.CarPlayerDatabase
 import com.example.carplayer.shared.models.TrackAlbumModel
 import com.example.carplayer.shared.services.MyMediaService
 import com.example.carplayer.sheets.AddUrlBottomSheet
+import com.example.carplayer.utils.detectAudioOrVideoStream
+import com.example.carplayer.utils.hideLoadingDialog
+import com.example.carplayer.utils.showLoadingDialog
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import com.google.android.material.tabs.TabLayoutMediator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -40,7 +37,6 @@ import java.util.UUID
 class AlbumListDialogFragment : BottomSheetDialogFragment() {
 
     private lateinit var mediaController: MediaController
-    private lateinit var albumAdapter: AlbumAdapter
     private val albums = mutableListOf<MediaItem>()
     private lateinit var binding: DialogAlbumListBinding
 
@@ -57,6 +53,7 @@ class AlbumListDialogFragment : BottomSheetDialogFragment() {
         return binding.root
     }
 
+
     override fun onStart() {
         super.onStart()
         val dialog = dialog as? BottomSheetDialog
@@ -70,32 +67,67 @@ class AlbumListDialogFragment : BottomSheetDialogFragment() {
         behavior.isDraggable = true //
         connectToMediaService()
 
-        loadFromDatabase()
+        //  loadFromDatabase()
+
+
+    }
+
+
+    private fun initViewPager() {
+        val adapter = AlbumsPagerAdapter(requireActivity()) { url ->
+            //val index = mediaController.mediaItems.indexOfFirst { it.mediaMetadata.mediaUri.toString() == yourUrl }
+            val index = mediaController.currentTimeline
+                .let { timeline ->
+                    (0 until timeline.windowCount).firstOrNull { i ->
+                        mediaController.getMediaItemAt(i).localConfiguration?.uri.toString() == url
+                    }
+                }
+            Log.d("AlbumListDialogFragment", "initViewPager: update received play now -> $index")
+            if (index != null) {
+                mediaController.seekTo(index, 0L)
+            } else {
+                Log.w("ExoPlayer", "URL not found in media items.")
+            }
+
+        }
+        binding.pager.adapter = adapter
+        TabLayoutMediator(binding.tabLayout, binding.pager) { tab, position ->
+            tab.text = when (position) {
+                0 -> "All"
+                1 -> "Videos"
+                2 -> "Audios"
+                else -> "Tab ${position + 1}"
+            }
+        }.attach()
     }
 
     private fun loadFromDatabase() = with(binding) {
-      val adapter =  AlbumUrlsAdapter(onPlayClick = { album, position ->
-          Log.d("AlbumsList", "loadFromDatabase: position clicked -> $position, items count -> ${mediaController.mediaItemCount}")
-          mediaController.seekTo(position,0)
-      })
-     rvAlbums.adapter = adapter
+        val adapter = AlbumUrlsAdapter(onPlayClick = { album, position ->
+            Log.d(
+                "AlbumsList",
+                "loadFromDatabase: position clicked -> $position, items count -> ${mediaController.mediaItemCount}"
+            )
+            mediaController.seekTo(position, 0)
+        })
+        rvAlbums.adapter = adapter
         CoroutineScope(Dispatchers.IO).launch {
-            CarPlayerDatabase.getInstance(requireContext()).albumsDao().listenAll().collectLatest { albums ->
-                Log.d("AlbumsList", "loadFromDatabase: collection update received")
+            CarPlayerDatabase.getInstance(requireContext()).albumsDao().listenAll()
+                .collectLatest { albums ->
+                    Log.d("AlbumsList", "loadFromDatabase: collection update received")
 
-                val updatedAlbums = albums.map { album ->
-                    if (album.isPlaying) {
-                        // Return the updated version of the playing item
-                        album.copy(isPlaying = true)
-                    } else {
-                        album.copy(isPlaying = false)
+                    val updatedAlbums = albums.map { album ->
+                        if (album.isPlaying) {
+                            // Return the updated version of the playing item
+                            album.copy(isPlaying = true)
+                        } else {
+                            album.copy(isPlaying = false)
+                        }
+                    }
+
+                    withContext(Dispatchers.Main) {
+                        adapter.submitList(updatedAlbums)
                     }
                 }
-
-                withContext(Dispatchers.Main) {
-                    adapter.submitList(updatedAlbums)
-                }
-            }
         }
     }
 
@@ -109,28 +141,15 @@ class AlbumListDialogFragment : BottomSheetDialogFragment() {
                 MediaController.Builder(requireContext(), sessionToken).buildAsync()
             mediaControllerFuture.addListener({
                 mediaController = mediaControllerFuture.get()
-              //  loadAlbums()
+                //  loadAlbums()
             }, ContextCompat.getMainExecutor(requireContext()))
             // loadAlbums()
         }
     }
 
-    @SuppressLint("NotifyDataSetChanged")
-    private fun loadAlbums() {
-        val timeline = mediaController.currentTimeline // player: ExoPlayer instance
-        val mediaItems = mutableListOf<MediaItem>()
-
-        for (i in 0 until timeline.windowCount) {
-            val window = Timeline.Window()
-            timeline.getWindow(i, window)
-            mediaItems.add(window.mediaItem)
-        }
-        albums.clear()
-        albums.addAll(mediaItems)
-        albumAdapter.notifyDataSetChanged()
-    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        initViewPager()
 //        albumAdapter = AlbumAdapter(albums) {
 //            // handle click
 //        }
@@ -141,19 +160,34 @@ class AlbumListDialogFragment : BottomSheetDialogFragment() {
         binding.btnBack.setOnClickListener { dismiss() }
 
         binding.btnAddToPlaylist.setOnClickListener {
-            val bottomSheet = AddUrlBottomSheet { url ->
+            val bottomSheet = AddUrlBottomSheet {title, url ->
                 if (Patterns.WEB_URL.matcher(url).matches()) {
                     // Toast.makeText(context, "Added URL: $url", Toast.LENGTH_SHORT).show()
+                    requireActivity().showLoadingDialog()
                     lifecycleScope.launch(Dispatchers.IO) {
-                        CarPlayerDatabase.getInstance(requireContext()).albumsDao().insertAll(
-                            TrackAlbumModel(  // ✅ Must use your Room-safe entity, not TrackAlbumModel
-                                id = UUID.randomUUID().toString(),
-                                title = "Unknown",
-                                artist = "",
-                                streamUrl = url,
-                                imageUrl = ""
+                        requireActivity().detectAudioOrVideoStream(url) {
+                            Log.d("AlbumsList", "onViewCreated: extension -> $it")
+                            var isVideo = false
+                            if (it != null && it.startsWith("video")) {
+                                isVideo = true
+                            }
+
+                            CarPlayerDatabase.getInstance(requireContext()).albumsDao().insertAll(
+                                TrackAlbumModel(  // ✅ Must use your Room-safe entity, not TrackAlbumModel
+                                    id = UUID.randomUUID().toString(),
+                                    title = title,
+                                    artist = "",
+                                    streamUrl = url,
+                                    imageUrl = "",
+                                    isVideo = isVideo
+                                )
                             )
-                        )
+
+                            requireActivity().hideLoadingDialog()
+
+
+                        }
+
 
 //                        withContext(Dispatchers.Main) {
 //                            delay(1500)

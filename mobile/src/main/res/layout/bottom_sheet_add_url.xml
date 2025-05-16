@@ -5,6 +5,7 @@
     android:id="@+id/bottom_sheet_add_url"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:layout_gravity="bottom"
     android:background="@drawable/bg_bottom_sheet"
     android:backgroundTint="#212121"
     android:padding="24dp">
@@ -35,6 +36,24 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:tint="@android:color/white" />
 
+
+
+    <EditText
+        android:id="@+id/etTitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:autofillHints=""
+        android:hint="@string/title"
+        android:textColor="@android:color/white"
+        android:textColorHint="#BBBBBB"
+        android:backgroundTint="@android:color/white"
+        android:inputType="textUri"
+        android:focusableInTouchMode="true"
+        app:layout_constraintTop_toBottomOf="@id/tvTitle"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="16dp" />
+
     <!-- URL Input -->
     <EditText
         android:id="@+id/etUrl"
@@ -46,10 +65,13 @@
         android:textColorHint="#BBBBBB"
         android:backgroundTint="@android:color/white"
         android:inputType="textUri"
-        app:layout_constraintTop_toBottomOf="@id/tvTitle"
+        android:focusableInTouchMode="true"
+        app:layout_constraintTop_toBottomOf="@id/etTitle"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginTop="16dp" />
+
+
 
     <!-- Save Button -->
     <com.google.android.material.button.MaterialButton

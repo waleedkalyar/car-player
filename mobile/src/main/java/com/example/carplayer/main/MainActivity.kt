@@ -1,7 +1,7 @@
-package com.example.carplayer
+package com.example.carplayer.main
 
+import android.Manifest
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
 import android.content.ComponentName
@@ -20,6 +20,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -39,14 +40,17 @@ import androidx.media3.ui.PlayerView
 import androidx.palette.graphics.Palette
 import coil.imageLoader
 import coil.request.ImageRequest
+import com.example.carplayer.R
+import com.example.carplayer.browser.BrowserActivity
 import com.example.carplayer.databinding.ActivityMainBinding
+import com.example.carplayer.databinding.CustomPlayerControllerBinding
 import com.example.carplayer.dialogs.AlbumListDialogFragment
 import com.example.carplayer.shared.services.MyMediaService
-import com.example.carplayer.sheets.AddUrlBottomSheet
 import com.google.common.util.concurrent.ListenableFuture
 import jp.wasabeef.blurry.Blurry
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+//import org.openauto.webviewauto.WebViewPhoneActivity
 
 class MainActivity : AppCompatActivity() {
     private var _binding: ActivityMainBinding? = null
@@ -54,10 +58,10 @@ class MainActivity : AppCompatActivity() {
     private var mediaController: MediaController? = null
     private var mediaControllerFuture: ListenableFuture<MediaController>? = null
 
-    private var isCurrentVideo = false
+    private val mainViewModel: MainViewModel by viewModels()
 
     private val bluetoothPermissions = mutableListOf(
-        android.Manifest.permission.BLUETOOTH, android.Manifest.permission.BLUETOOTH_ADMIN
+        Manifest.permission.BLUETOOTH, Manifest.permission.BLUETOOTH_ADMIN
     )
 
 
@@ -66,16 +70,16 @@ class MainActivity : AppCompatActivity() {
     // Add new permissions for Android 12+ and location
     @SuppressLint("InlinedApi")
     private val android12PlusPermissions = listOf(
-        android.Manifest.permission.BLUETOOTH_SCAN,
-        android.Manifest.permission.BLUETOOTH_CONNECT,
-        android.Manifest.permission.ACCESS_FINE_LOCATION,
-        android.Manifest.permission.ACCESS_COARSE_LOCATION
+        Manifest.permission.BLUETOOTH_SCAN,
+        Manifest.permission.BLUETOOTH_CONNECT,
+        Manifest.permission.ACCESS_FINE_LOCATION,
+        Manifest.permission.ACCESS_COARSE_LOCATION
     )
 
     private val enableBluetoothLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
+        if (result.resultCode == RESULT_OK) {
             Log.d("Bluetooth", "Bluetooth enabled by user")
             Toast.makeText(
                 this,
@@ -105,6 +109,7 @@ class MainActivity : AppCompatActivity() {
             insets
         }
 
+
         initViews()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -122,12 +127,15 @@ class MainActivity : AppCompatActivity() {
 
     fun initViews() {
         // Start MediaService if not already running
-        if (!MyMediaService.isRunning) {
+        if (!MyMediaService.Companion.isRunning) {
 
             startForegroundService(serviceIntent)
         }
 
         // Connect to MediaSession
+
+        mainViewModel.lastMetadata?.let { handleMetadata(it) }
+
         connectToMediaSession()
         updateImageViewVisibilityBasedOnWidth()
 
@@ -144,9 +152,17 @@ class MainActivity : AppCompatActivity() {
 //            }
 //            bottomSheet.show(supportFragmentManager, "AddUrlBottomSheet")
             AlbumListDialogFragment().apply {
-                show(supportFragmentManager,"albums")
+                show(supportFragmentManager, "albums")
             }
         }
+
+//        btnBrowser.setOnClickListener {
+//            Intent(this@MainActivity, WebViewPhoneActivity::class.java).apply {
+//                startActivity(this)
+//            }
+//
+//        }
+
     }
 
 
@@ -156,8 +172,8 @@ class MainActivity : AppCompatActivity() {
         } else {
             bluetoothPermissions.addAll(
                 listOf(
-                    android.Manifest.permission.ACCESS_FINE_LOCATION,
-                    android.Manifest.permission.ACCESS_COARSE_LOCATION
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
                 )
             )
         }
@@ -209,7 +225,7 @@ class MainActivity : AppCompatActivity() {
 
     fun getBluetoothAdapter(context: Context): BluetoothAdapter? {
         val bluetoothManager =
-            context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+            context.getSystemService(BLUETOOTH_SERVICE) as? BluetoothManager
         return bluetoothManager?.adapter
     }
 
@@ -239,8 +255,11 @@ class MainActivity : AppCompatActivity() {
                 mediaController = controller
                 playerView.player = controller
 
+                updateDurationDisplay()
+
                 controller?.mediaMetadata?.let { metadata ->
                     if (!metadata.title.isNullOrEmpty()) {
+                        mainViewModel.lastMetadata = metadata
                         handleMetadata(metadata) // <- use your update UI code here
                         updateControllerOnMediaTrack(controller.currentTracks)
                     }
@@ -251,6 +270,9 @@ class MainActivity : AppCompatActivity() {
 
                 controller?.addListener(object : Player.Listener {
                     override fun onPlaybackStateChanged(state: Int) {
+                        if (state == Player.STATE_READY) {
+                            updateDurationDisplay()  // Safe time to check live
+                        }
                         when (state) {
                             Player.STATE_BUFFERING -> loadingSpinner.visibility = View.VISIBLE
                             Player.STATE_READY, Player.STATE_ENDED, Player.STATE_IDLE -> loadingSpinner.visibility =
@@ -261,16 +283,17 @@ class MainActivity : AppCompatActivity() {
 
                     @SuppressLint("UseKtx")
                     override fun onMediaMetadataChanged(metadata: MediaMetadata) {
+                        mainViewModel.lastMetadata = metadata
                         handleMetadata(metadata)
                     }
 
 
                     override fun onTracksChanged(tracks: Tracks) {
                         super.onTracksChanged(tracks)
-                       updateControllerOnMediaTrack(tracks)
+                        updateControllerOnMediaTrack(tracks)
+
 
                     }
-
 
 
                 })
@@ -283,13 +306,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     @OptIn(UnstableApi::class)
-    private fun updateControllerOnMediaTrack(tracks: Tracks) = with(binding){
+    private fun updateControllerOnMediaTrack(tracks: Tracks) = with(binding) {
         var hasVideo = hasVideoTrack(tracks)
-        var  hasAudio = hasAudioTrack(tracks)
+        var hasAudio = hasAudioTrack(tracks)
+
+        val titleText = findViewById<TextView>(R.id.track_title)
+        val artistText = findViewById<TextView>(R.id.track_artist)
 
         Log.d("TRACKS", "Video: $hasVideo, Audio: $hasAudio")
 
-        isCurrentVideo = hasVideo
+        mainViewModel.isCurrentVideo = hasVideo
         updateImageViewVisibilityBasedOnWidth()
 
         // You can now show/hide views based on what's active:
@@ -299,6 +325,8 @@ class MainActivity : AppCompatActivity() {
             playerView.controllerAutoShow = true
             playerView.controllerHideOnTouch = true
             playerView.videoSurfaceView?.visibility = View.VISIBLE
+            titleText.visibility = View.INVISIBLE
+            artistText.visibility = View.INVISIBLE
         } else if (hasAudio) {
             // Maybe show album art, metadata, etc.
             playerView.controllerShowTimeoutMs = 0
@@ -308,11 +336,13 @@ class MainActivity : AppCompatActivity() {
             playerView.setBackgroundColor(Color.TRANSPARENT)
             playerView.setShutterBackgroundColor(Color.TRANSPARENT)
             imgBackground.visibility = View.VISIBLE
+            titleText.visibility = View.VISIBLE
+            artistText.visibility = View.VISIBLE
             // playerView.defaultArtwork = Color.TRANSPARENT.toDrawable()
         }
     }
 
-    private fun hasVideoTrack(tracks: Tracks) : Boolean{
+    private fun hasVideoTrack(tracks: Tracks): Boolean {
         var hasVideo = false
         var hasAudio = false
 
@@ -334,7 +364,7 @@ class MainActivity : AppCompatActivity() {
         return hasVideo
     }
 
-    private fun hasAudioTrack(tracks: Tracks) : Boolean{
+    private fun hasAudioTrack(tracks: Tracks): Boolean {
         var hasVideo = false
         var hasAudio = false
 
@@ -363,11 +393,15 @@ class MainActivity : AppCompatActivity() {
         val artist = metadata.artist
         val artworkUri = metadata.artworkUri
 
-        val titleText = findViewById<TextView>(R.id.track_title)
+
+       val titleText = findViewById<TextView>(R.id.track_title)
         val artistText = findViewById<TextView>(R.id.track_artist)
 
-        titleText.text = title
-        artistText.text = artist
+        if(title?.contains(" - ") == false){
+            titleText.text = title
+            artistText.text = artist
+        }
+
 
         if (metadata.artworkUri != null && metadata.artworkUri.toString()
                 .isNotEmpty()
@@ -431,7 +465,7 @@ class MainActivity : AppCompatActivity() {
 
 
         // Show ImageView only if width is 720dp or more
-        if (widthDp >= 720 && !isCurrentVideo) {
+        if (widthDp >= 720 && ! mainViewModel.isCurrentVideo) {
             albumImage.visibility = View.VISIBLE
             playerView.setBackgroundColor(Color.TRANSPARENT)
             // playerView.videoSurfaceView?.visibility = View.INVISIBLE
@@ -454,7 +488,7 @@ class MainActivity : AppCompatActivity() {
         // Calculate width in dp (density-independent pixels)
         val widthDp = displayMetrics.widthPixels / displayMetrics.density
 
-        if (widthDp >= 720 && !isCurrentVideo) {
+        if (widthDp >= 720 && ! mainViewModel.isCurrentVideo) {
             playerView.artworkDisplayMode = PlayerView.ARTWORK_DISPLAY_MODE_OFF
             playerView.defaultArtwork = Color.TRANSPARENT.toDrawable()
         } else {
@@ -477,6 +511,31 @@ class MainActivity : AppCompatActivity() {
         Blurry.with(this@MainActivity).radius(25).sampling(4).from(placeholder?.toBitmap())
             .into(imgBackground)
     }
+
+
+    @OptIn(UnstableApi::class)
+    private fun updateDurationDisplay() {
+        val durationTextView = findViewById<TextView>(R.id.exo_duration1)
+        val player = mediaController ?: return
+
+        val isLive = player.isCurrentMediaItemLive
+
+        if (isLive) {
+            durationTextView.text = "LIVE"
+            durationTextView.setTextColor(Color.WHITE)
+            durationTextView.background = ContextCompat.getDrawable(this, R.drawable.live_background)
+            durationTextView.setPadding(12, 4, 12, 4) // Optional: Add some padding
+        } else {
+            val durationMs = player.duration
+            durationTextView.text = androidx.media3.common.util.Util.getStringForTime(
+                StringBuilder(), java.util.Formatter(), durationMs
+            )
+            durationTextView.setTextColor(Color.WHITE)
+            durationTextView.background = null
+            durationTextView.setPadding(0, 0, 0, 0)
+        }
+    }
+
 
 
 }

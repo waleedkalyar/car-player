@@ -8,7 +8,7 @@
     android:background="@color/black"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".MainActivity">
+    tools:context=".main.MainActivity">
 
     <!-- Horizontal Chain: PlayerView + ImageView -->
 
@@ -90,6 +90,19 @@
         android:scaleType="fitXY"
         android:background="?actionBarItemBackground"
         android:src="@drawable/ic_playlist"
+        app:tint="@color/white" />
+
+    <ImageButton
+        android:id="@+id/btnBrowser"
+        android:layout_width="34dp"
+        android:layout_height="34dp"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_margin="16dp"
+        android:scaleType="fitXY"
+        android:background="?actionBarItemBackground"
+        android:src="@drawable/ic_browser"
         app:tint="@color/white" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
