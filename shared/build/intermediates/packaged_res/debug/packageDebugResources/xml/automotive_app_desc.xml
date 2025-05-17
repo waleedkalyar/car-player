@@ -4,8 +4,8 @@
 
     <uses name="template" />
 
-<!--        <uses name="service" tools:ignore="InvalidUsesTagAttribute" />-->
+    <!--        <uses name="service" tools:ignore="InvalidUsesTagAttribute" />-->
 
-        <uses name="media" />
+    <uses name="media" />
 
 </automotiveApp>

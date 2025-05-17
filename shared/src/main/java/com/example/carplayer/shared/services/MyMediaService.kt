@@ -1,5 +1,6 @@
 package com.example.carplayer.shared.services
 
+import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Context
@@ -10,6 +11,7 @@ import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.annotation.RequiresApi
@@ -23,9 +25,12 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.mediacodec.MediaCodecInfo
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.extractor.metadata.icy.IcyHeaders
 import androidx.media3.extractor.metadata.icy.IcyInfo
+import androidx.media3.session.LibraryResult
+import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import coil.imageLoader
@@ -34,6 +39,10 @@ import com.example.carplayer.shared.R
 import com.example.carplayer.shared.database.CarPlayerDatabase
 import com.example.carplayer.shared.models.TrackAlbumModel
 import com.example.carplayer.shared.network.api.lastFmApi
+import com.example.carplayer.shared.utils.AutoMediaConstants
+import com.google.common.collect.ImmutableList
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -42,10 +51,10 @@ import java.io.ByteArrayOutputStream
 import java.util.UUID
 
 
-class MyMediaService : MediaSessionService() {
+class MyMediaService : MediaLibraryService() {
 
     private var player: ExoPlayer? = null
-    private var mediaSession: MediaSession? = null
+    private var mediaSession: MediaLibrarySession? = null
 
     var lastMetadataKey: String? = null
 
@@ -56,6 +65,232 @@ class MyMediaService : MediaSessionService() {
     lateinit var database: CarPlayerDatabase
 
     val mediaItems: MutableList<MediaItem> = mutableListOf()
+
+
+    val sessionCallback = object : MediaLibrarySession.Callback {
+        override fun onGetLibraryRoot(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            params: MediaLibraryService.LibraryParams?
+        ): ListenableFuture<LibraryResult<MediaItem>> {
+            val rootExtras = Bundle().apply {
+                putInt(
+                    AutoMediaConstants.CONTENT_STYLE_SUPPORTED,
+                    AutoMediaConstants.CONTENT_STYLE_GRID_ITEM_HINT
+                )
+                putInt(
+                    AutoMediaConstants.CONTENT_STYLE_BROWSABLE_HINT,
+                    AutoMediaConstants.CONTENT_STYLE_GRID_ITEM_HINT
+                )
+            }
+
+            val rootMetadata = MediaMetadata.Builder()
+                .setTitle("My Library")
+                .setIsBrowsable(true)
+                .setIsPlayable(false)
+                .setExtras(rootExtras) // put extras *here*
+                .build()
+
+            val rootItem = MediaItem.Builder()
+                .setMediaId("root")
+                .setMediaMetadata(rootMetadata)
+                .build()
+
+            return Futures.immediateFuture(LibraryResult.ofItem(rootItem,params))
+        }
+
+
+        override fun onGetChildren(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            parentMediaId: String,
+            page: Int,
+            pageSize: Int,
+            params: MediaLibraryService.LibraryParams?
+        ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> {
+            val items = when (parentMediaId) {
+                "root" -> listOf(
+                    createCategoryItem("all", "All Media"),
+                    createCategoryItem("videos", "Videos"),
+                    createCategoryItem("audios", "Audios")
+                )
+                "all" -> getMediaItemsFromDbAsGrid()
+                "videos" -> getVideosFromDb()
+                "audios" -> getAudiosFromDb()
+                else -> emptyList()
+            }
+
+//            Log.d("MediaSession", "Returning ${items.size} children for parent: $parentMediaId")
+//            items.forEach {
+//                Log.d("MediaSession", "Item -> id=${it.mediaId}, uri=${it.localConfiguration?.uri}")
+//            }
+
+            return Futures.immediateFuture(LibraryResult.ofItemList(items,params))
+        }
+
+        override fun onSubscribe(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            parentId: String,
+            params: LibraryParams?
+        ): ListenableFuture<LibraryResult<Void>> {
+            // Perform any logic for subscription, e.g., adding to a list of subscribers or managing the state
+
+            // Return a success result
+            val result = LibraryResult.ofVoid(params)  // Using ofVoid to indicate successful subscription
+            return Futures.immediateFuture(result)
+        }
+
+        override fun onUnsubscribe(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            parentId: String
+        ): ListenableFuture<LibraryResult<Void>> {
+            // Perform any logic for unsubscription, e.g., removing from a list of subscribers or clearing the state
+            // Return a success result
+            val result = LibraryResult.ofVoid()  // Using ofVoid to indicate successful unsubscription
+            return Futures.immediateFuture(result)
+        }
+
+
+        @SuppressLint("UnsafeOptInUsageError")
+        override fun onSetMediaItems(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            mediaItems: MutableList<MediaItem>,
+            startIndex: Int,
+            startPositionMs: Long
+        ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
+
+            mediaItems.forEach {
+                Log.d("MediaSession", "onSetMedia: Item -> id=${it.mediaId}, uri=${it.localConfiguration?.uri}")
+            }
+
+            val currentItems = player?.currentTimeline?.let {
+                (0 until it.windowCount).mapNotNull { i -> player?.getMediaItemAt(i) }
+            } ?: emptyList()
+
+            val requestedMediaId = mediaItems.firstOrNull()?.mediaId.orEmpty()
+
+            // Attempt to find the matching item in DB
+            val item = database.albumsDao().getItemById(requestedMediaId)
+
+            if (item != null) {
+                val targetIndex = currentItems.indexOfFirst {
+                    it.localConfiguration?.uri.toString() == item.streamUrl
+                }.takeIf { it >= 0 } ?: 0
+
+                val currentIndex = player?.currentMediaItemIndex ?: -1
+                val currentlyPlayingUri = player?.currentMediaItem?.localConfiguration?.uri?.toString()
+
+                if (currentlyPlayingUri != item.streamUrl || currentIndex != targetIndex) {
+                    Log.d("MediaSession", "Seeking to index $targetIndex (was $currentIndex), streamUrl = ${item.streamUrl}")
+                    player?.seekTo(targetIndex, startPositionMs)
+                } else {
+                    Log.d("MediaSession", "Already playing the requested item at correct index; skipping seekTo")
+                }
+
+                return Futures.immediateFuture(
+                    MediaSession.MediaItemsWithStartPosition(currentItems, targetIndex, startPositionMs)
+                )
+            }
+
+            // Default fallback
+            return Futures.immediateFuture(
+                MediaSession.MediaItemsWithStartPosition(currentItems, 0, startPositionMs)
+            )
+        }
+
+
+
+
+
+
+
+    }
+
+    private fun createCategoryItem(mediaId: String, title: String): MediaItem {
+        val metadata = MediaMetadata.Builder()
+            .setTitle(title)
+            .setIsBrowsable(true)
+            .setIsPlayable(false)
+            .build()
+
+        return MediaItem.Builder()
+            .setMediaId(mediaId)
+            .setMediaMetadata(metadata)
+            .build()
+    }
+
+
+
+
+    fun getMediaItemsFromDbAsGrid(): List<MediaItem> {
+        return database.albumsDao().getAll().map {
+            MediaItem.Builder()
+                .setMediaId(it.id)
+                .setUri(it.streamUrl)
+                .setMediaMetadata(
+                    MediaMetadata.Builder()
+                        .setTitle(it.title)
+                        .setArtist(it.streamUrl)
+                        .setIsBrowsable(false)
+                        .setArtworkUri(defaultArtWorkUri)
+                        .setIsPlayable(true)
+                        .build()
+                )
+                .build()
+        }
+    }
+
+    fun getVideosFromDb(): List<MediaItem> {
+        return database.albumsDao().getAllVideos().map {
+            MediaItem.Builder()
+                .setMediaId(it.id)
+                .setUri(it.streamUrl)
+                .setMediaMetadata(
+                    MediaMetadata.Builder()
+                        .setTitle(it.title)
+                        .setArtist(it.streamUrl)
+                        .setIsBrowsable(false)
+                        .setArtworkUri(defaultArtWorkUri)
+                        .setIsPlayable(true)
+                        .build()
+                )
+                .build()
+        }
+    }
+
+    fun getAudiosFromDb(): List<MediaItem> {
+        return database.albumsDao().getAllAudios().map {
+            MediaItem.Builder()
+                .setMediaId(it.id)
+                .setUri(it.streamUrl)
+                .setMediaMetadata(
+                    MediaMetadata.Builder()
+                        .setTitle(it.title)
+                        .setArtist(it.streamUrl)
+                        .setIsBrowsable(false)
+                        .setArtworkUri(defaultArtWorkUri)
+                        .setIsPlayable(true)
+                        .build()
+                )
+                .build()
+        }
+    }
+
+    fun isVideoUrl(url: String?): Boolean {
+        if (url.isNullOrBlank()) return false
+
+        val videoExtensions = listOf(
+            ".mp4", ".mkv", ".webm", ".ts", ".flv", ".avi", ".mov",
+            ".m4v", ".3gp", ".3g2", ".f4v", ".f4p", ".f4a", ".f4b"
+        )
+
+        val normalizedUrl = url.lowercase().substringBefore("?") // Strip query params
+        return videoExtensions.any { normalizedUrl.endsWith(it) }
+    }
+
 
 
     @RequiresApi(Build.VERSION_CODES.S)
@@ -123,9 +358,20 @@ class MyMediaService : MediaSessionService() {
                                     "MyMediaService",
                                     "onCreate: new item for play found and run playing function"
                                 )
-                                player?.setMediaItems(items.map {
-                                    MediaItem.Builder().setUri(it.streamUrl).build()
-                                })
+
+                                val currentUris = player?.currentTimeline?.let {
+                                    (0 until it.windowCount).mapNotNull { i -> player?.getMediaItemAt(i)?.localConfiguration?.uri?.toString() }
+                                } ?: emptyList()
+
+                                val newUris = items.map { it.streamUrl }
+
+                                if (newUris != currentUris) {
+
+                                    player?.setMediaItems(items.map {
+                                        MediaItem.Builder().setUri(it.streamUrl)
+                                            .build()
+                                    })
+                                }
                             }
                         }
                     }
@@ -257,10 +503,11 @@ class MyMediaService : MediaSessionService() {
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 super.onMediaItemTransition(mediaItem, reason)
+               var isVideo = isVideoUrl(mediaItem?.localConfiguration?.uri.toString())
                 CoroutineScope(Dispatchers.Main).launch {
                     updateMediaItem(
-                        title = mediaItem?.mediaMetadata?.title.toString(),
-                        artist = mediaItem?.mediaMetadata?.artist.toString(),
+                        title = mediaItem?.mediaMetadata?.title?.toString() ?: if (isVideo) "" else "Loading...",
+                        artist = mediaItem?.mediaMetadata?.artist?.toString() ?: if (isVideo) "" else "Loading...",
                         imageUrl = defaultArtWorkUri.toString()
                     )
                 }
@@ -331,8 +578,16 @@ class MyMediaService : MediaSessionService() {
         })
 
 
-        mediaSession = MediaSession.Builder(this, player!!)
+//        mediaSession = MediaSession.Builder(this, player!!)
+//            .build()
+
+        mediaSession = MediaLibrarySession.Builder(this,player!!, sessionCallback)
+            .setId("CarPlayerSession")
             .build()
+
+
+
+
 
         val intent = Intent().apply {
             Log.d("MediaIntent", "current pkg -> ${MyMediaService::class.java.packageName}")
@@ -351,9 +606,12 @@ class MyMediaService : MediaSessionService() {
 
     }
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
         return mediaSession
     }
+
+
+
 
 
     suspend fun updateMediaItem(title: String, artist: String, imageUrl: String) {

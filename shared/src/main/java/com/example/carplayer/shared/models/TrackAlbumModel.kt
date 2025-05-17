@@ -8,8 +8,8 @@ import kotlinx.serialization.Serializable
 @Entity(tableName = "albums")
 data class TrackAlbumModel(
     @PrimaryKey var id: String,
-    var title: String,
-    var artist: String,
+    var title: String = "Unknown",
+    var artist: String = "Unknown",
     var imageUrl: String,
     var streamUrl: String,
     var isPlaying: Boolean = false,

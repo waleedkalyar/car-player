@@ -19,11 +19,20 @@ interface AlbumsDao {
     @Query("SELECT * FROM albums WHERE isVideo = 1")
     fun listenAllVideos(): Flow<List<TrackAlbumModel>>
 
+    @Query("SELECT * FROM albums WHERE isVideo = 1")
+    fun getAllVideos(): List<TrackAlbumModel>
+
     @Query("SELECT * FROM albums WHERE isVideo = 0")
     fun listenAllAudios(): Flow<List<TrackAlbumModel>>
 
+    @Query("SELECT * FROM albums WHERE isVideo = 0")
+    fun getAllAudios(): List<TrackAlbumModel>
+
     @Query("UPDATE albums SET isPlaying = 0")
     suspend fun resetPlaying()
+
+    @Query("SELECT * FROM albums WHERE id=:id LIMIT 1")
+    fun getItemById(id: String): TrackAlbumModel?
 
 
     @Query("UPDATE albums SET isPlaying = 1,title = :title, artist =:artist, imageUrl = :artwork  WHERE streamUrl = :streamUrl")
