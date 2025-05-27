@@ -1,24 +1,34 @@
 package com.example.carplayer.dialogs
 
+import android.app.Activity
 import android.content.ComponentName
+import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.util.Patterns
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.PopupMenu
 import android.widget.Toast
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.MediaItem
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import com.example.carplayer.R
 import com.example.carplayer.databinding.DialogAlbumListBinding
 import com.example.carplayer.dialogs.adapters.AlbumUrlsAdapter
 import com.example.carplayer.dialogs.adapters.AlbumsPagerAdapter
 import com.example.carplayer.shared.database.CarPlayerDatabase
 import com.example.carplayer.shared.models.TrackAlbumModel
 import com.example.carplayer.shared.services.MyMediaService
+import com.example.carplayer.shared.utils.exportAlbumsToCsv
+import com.example.carplayer.shared.utils.hasStoragePermission
+import com.example.carplayer.shared.utils.importAlbumsFromCsv
 import com.example.carplayer.sheets.AddUrlBottomSheet
 import com.example.carplayer.utils.detectAudioOrVideoStream
 import com.example.carplayer.utils.hideLoadingDialog
@@ -32,6 +42,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.util.UUID
 
 class AlbumListDialogFragment : BottomSheetDialogFragment() {
@@ -44,6 +55,9 @@ class AlbumListDialogFragment : BottomSheetDialogFragment() {
 //        super.onCreate(savedInstanceState)
 //        setStyle(STYLE_NORMAL, R.style.BottomSheetDialogTheme)
 //    }
+
+    private lateinit var storagePermissionLauncher: ActivityResultLauncher<Array<String>>
+    private lateinit var csvPickerLauncher: ActivityResultLauncher<Intent>
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -150,6 +164,8 @@ class AlbumListDialogFragment : BottomSheetDialogFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         initViewPager()
+        initLaunchers()
+        requestStoragePermissionIfNeededAndExport()
 //        albumAdapter = AlbumAdapter(albums) {
 //            // handle click
 //        }
@@ -158,6 +174,10 @@ class AlbumListDialogFragment : BottomSheetDialogFragment() {
 //        binding.rvAlbums.adapter = albumAdapter
 
         binding.btnBack.setOnClickListener { dismiss() }
+
+        binding.btnMore.setOnClickListener { it ->
+            showCsvPopupMenu(it)
+        }
 
         binding.btnAddToPlaylist.setOnClickListener {
             val bottomSheet = AddUrlBottomSheet {title, url ->
@@ -203,6 +223,93 @@ class AlbumListDialogFragment : BottomSheetDialogFragment() {
             bottomSheet.show(parentFragmentManager, "AddUrlBottomSheet")
         }
     }
+
+    private fun initLaunchers() {
+        storagePermissionLauncher = registerForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions()
+        ) { permissions ->
+            val granted = permissions.entries.all { it.value }
+            if (granted) {
+                Toast.makeText(requireContext(), "Now you can export your Urls saved", Toast.LENGTH_SHORT)
+                    .show()
+            } else {
+                Toast.makeText(
+                    requireContext(),
+                    "Storage permission denied, please enable it for secure import export",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+
+        csvPickerLauncher = registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                val uri = result.data?.data
+                if (uri != null) {
+                    CarPlayerDatabase.getInstance(requireContext()).albumsDao().importAlbumsFromCsv(requireContext(), uri)
+                } else {
+                    Toast.makeText(requireContext(), "No file selected", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+
+    }
+
+    fun requestStoragePermissionIfNeededAndExport() {
+        if (!requireContext().hasStoragePermission()) {
+            val permissionsToRequest = mutableListOf<String>().apply {
+                add(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                    add(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                }
+            }.toTypedArray()
+
+            storagePermissionLauncher.launch(permissionsToRequest)
+        }
+    }
+
+
+    private fun showCsvPopupMenu(anchor: View) {
+        val popup = PopupMenu(requireContext(), anchor)
+        popup.menuInflater.inflate(R.menu.csv_menu, popup.menu)
+
+        popup.setOnMenuItemClickListener {
+            when (it.itemId) {
+                R.id.menu_import_csv -> {
+                    importCsvFile()
+                    true
+                }
+                R.id.menu_export_csv -> {
+                    exportAlbums()
+                    true
+                }
+                else -> false
+            }
+        }
+        popup.show()
+    }
+
+
+    fun exportAlbums() {
+        val file = CarPlayerDatabase.getInstance(requireContext()).albumsDao().exportAlbumsToCsv(requireContext())
+        if (file) {
+            Toast.makeText(requireContext(), "Exported to downloads folder", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(requireContext(), "Export failed", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun importCsvFile() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*" // Accept all types, but restrict with MIME filter below
+            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("text/csv", "text/comma-separated-values", "application/csv"))
+        }
+        csvPickerLauncher.launch(intent)
+
+    }
+
 
     override fun onDestroy() {
         if (::mediaController.isInitialized) {

@@ -293,6 +293,9 @@ class MyMediaService : MediaLibraryService() {
 
 
 
+
+
+
     @RequiresApi(Build.VERSION_CODES.S)
     @OptIn(UnstableApi::class)
     override fun onCreate() {
@@ -423,6 +426,9 @@ class MyMediaService : MediaLibraryService() {
 
         player?.prepare()
         player?.playWhenReady = true
+
+
+
 
         player?.addListener(object : Player.Listener {
 

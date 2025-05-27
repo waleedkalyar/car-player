@@ -10,6 +10,7 @@ import androidx.car.app.Session
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.session.SessionToken
+import com.example.carplayer.services.screens.AlertDialogScreen
 import com.example.carplayer.shared.database.CarPlayerDatabase
 import com.example.carplayer.shared.services.MyMediaService
 import kotlinx.coroutines.launch
@@ -22,23 +23,31 @@ class MediaBrowseSession() : Session() {
     override fun onCreateScreen(intent: Intent): Screen {
         Log.d(CarMediaService.TAG, "onCreateScreen called")
 
-        // Initialize and return the MediaBrowseScreen immediately.
-        val mediaBrowseScreen = MediaBrowseScreen(
-            carContext,
-            CarPlayerDatabase.getInstance(carContext).albumsDao(),
-            mediaController // Pass the mediaController, it will be null at first
-        )
+        return AlertDialogScreen(carContext) { screenManager ->
 
-        // Connect to the media service asynchronously to get the MediaController.
-        connectToMediaService(carContext) { controller ->
-            mediaController = controller
+            // Initialize and return the MediaBrowseScreen immediately.
+            val mediaBrowseScreen = MediaBrowseScreen(
+                carContext,
+                CarPlayerDatabase.getInstance(carContext).albumsDao(),
+                mediaController // Pass the mediaController, it will be null at first
+            )
 
-            // Once the mediaController is ready, update the screen or trigger a screen update.
-            // Since the mediaController is ready, we can now update the mediaBrowseScreen.
-            mediaBrowseScreen.updateMediaController(controller)
+
+            // Connect to the media service asynchronously to get the MediaController.
+            connectToMediaService(carContext) { controller ->
+                mediaController = controller
+
+                // Once the mediaController is ready, update the screen or trigger a screen update.
+                // Since the mediaController is ready, we can now update the mediaBrowseScreen.
+                mediaBrowseScreen.updateMediaController(controller)
+            }
+
+            screenManager.push(mediaBrowseScreen)
+
+
         }
 
-        return mediaBrowseScreen
+       // return mediaBrowseScreen
     }
 
     // This function asynchronously connects to the media service and retrieves the MediaController.

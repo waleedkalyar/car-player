@@ -1,6 +1,7 @@
 package com.example.carplayer
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -28,7 +29,10 @@ import android.view.View
 import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
@@ -55,10 +59,16 @@ import kotlinx.coroutines.launch
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toDrawable
 import androidx.core.view.isInvisible
+import androidx.room.RoomDatabase
 import com.example.carplayer.databinding.ActivityMainBinding
+import com.example.carplayer.shared.database.CarPlayerDatabase
 import com.example.carplayer.shared.services.MyMediaService
+import com.example.carplayer.shared.utils.exportAlbumsToCsv
+import com.example.carplayer.shared.utils.hasStoragePermission
+import com.example.carplayer.shared.utils.importAlbumsFromCsv
 import com.example.carplayer.utils.toBitmap
 import jp.wasabeef.blurry.Blurry
+import java.io.File
 
 class MainActivity : AppCompatActivity() {
     private var _binding: ActivityMainBinding? = null
@@ -67,6 +77,9 @@ class MainActivity : AppCompatActivity() {
     private var mediaControllerFuture: ListenableFuture<MediaController>? = null
 
     private var isCurrentVideo = false
+
+
+
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -97,9 +110,15 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-    private fun initClickListeners() {
 
+
+    private fun initClickListeners() {
+        //todo: add menu with import export buttons
     }
+
+
+
+
 
 
     @OptIn(UnstableApi::class)
@@ -251,7 +270,7 @@ class MainActivity : AppCompatActivity() {
                             playerView.setBackgroundColor(Color.TRANSPARENT)
                             playerView.setShutterBackgroundColor(Color.TRANSPARENT)
                             imgBackground.visibility = View.VISIBLE
-                           // playerView.defaultArtwork = Color.TRANSPARENT.toDrawable()
+                            // playerView.defaultArtwork = Color.TRANSPARENT.toDrawable()
                         }
                     }
 

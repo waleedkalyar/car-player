@@ -50,7 +50,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import jp.wasabeef.blurry.Blurry
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-//import org.openauto.webviewauto.WebViewPhoneActivity
+
 
 class MainActivity : AppCompatActivity() {
     private var _binding: ActivityMainBinding? = null

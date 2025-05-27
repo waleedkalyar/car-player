@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.carplayer.databinding.ItemAlbumUrlBinding
@@ -32,7 +33,7 @@ class AlbumUrlsAdapter(val onPlayClick: (album: TrackAlbumModel, index:Int) -> U
             return oldItem.streamUrl == newItem.streamUrl && oldItem.isPlaying == newItem.isPlaying
         }
 
-    }) {
+    }), ItemTouchHelperAdapter {
     override fun onCreateViewHolder(
         parent: ViewGroup,
         viewType: Int
@@ -51,6 +52,14 @@ class AlbumUrlsAdapter(val onPlayClick: (album: TrackAlbumModel, index:Int) -> U
         position: Int
     ) {
         holder.bind(getItem(position))
+    }
+
+    override fun onItemMove(fromPosition: Int, toPosition: Int): Boolean {
+        val mutableList = currentList.toMutableList()
+        val item = mutableList.removeAt(fromPosition)
+        mutableList.add(toPosition, item)
+        submitList(mutableList.toList())
+        return true
     }
 
 
@@ -98,4 +107,7 @@ class AlbumUrlsAdapter(val onPlayClick: (album: TrackAlbumModel, index:Int) -> U
             }
         }
     }
+
+
+
 }

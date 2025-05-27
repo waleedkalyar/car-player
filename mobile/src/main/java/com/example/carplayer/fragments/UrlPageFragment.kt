@@ -7,9 +7,11 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.ItemTouchHelper
 import com.example.carplayer.databinding.FragmentUrlPageBinding
 import com.example.carplayer.dialogs.adapters.AlbumUrlsAdapter
 import com.example.carplayer.dialogs.adapters.TracMediaType
+import com.example.carplayer.dialogs.adapters.helper.SimpleItemTouchHelperCallback
 import com.example.carplayer.shared.database.CarPlayerDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -56,6 +58,9 @@ class UrlPageFragment() : Fragment() {
             onTrackSelect?.invoke(album.streamUrl)
         })
         rvAlbums.adapter = adapter
+        val callback = SimpleItemTouchHelperCallback(adapter)
+        val itemTouchHelper = ItemTouchHelper(callback)
+        itemTouchHelper.attachToRecyclerView(rvAlbums)
         CoroutineScope(Dispatchers.IO).launch {
             CarPlayerDatabase.getInstance(requireContext()).albumsDao().listenAllWithConditions(
                 isVideo = type == TracMediaType.VIDEO,

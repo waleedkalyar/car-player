@@ -3,6 +3,7 @@ package com.example.carplayer.shared.database
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import com.example.carplayer.shared.models.TrackAlbumModel
@@ -77,7 +78,7 @@ interface AlbumsDao {
     }
 
 
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insertAll(vararg album: TrackAlbumModel)
 
     @Delete
