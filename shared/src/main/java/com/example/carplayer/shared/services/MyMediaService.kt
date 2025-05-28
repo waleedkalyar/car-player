@@ -7,15 +7,12 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
-import android.media.AudioFocusRequest
-import android.media.AudioManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.annotation.RequiresApi
-import androidx.core.net.toUri
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -25,14 +22,12 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.mediacodec.MediaCodecInfo
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.extractor.metadata.icy.IcyHeaders
 import androidx.media3.extractor.metadata.icy.IcyInfo
 import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
-import androidx.media3.session.MediaSessionService
 import coil.imageLoader
 import coil.request.ImageRequest
 import com.example.carplayer.shared.R
@@ -49,6 +44,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.util.UUID
+import androidx.core.net.toUri
 
 
 class MyMediaService : MediaLibraryService() {
@@ -111,12 +107,11 @@ class MyMediaService : MediaLibraryService() {
             val items = when (parentMediaId) {
                 "root" -> listOf(
                     createCategoryItem("all", "All Media"),
-                    createCategoryItem("videos", "Videos"),
-                    createCategoryItem("audios", "Audios")
+                    createCategoryItem("favourites", "Favourites"),
+
                 )
                 "all" -> getMediaItemsFromDbAsGrid()
-                "videos" -> getVideosFromDb()
-                "audios" -> getAudiosFromDb()
+                "favourites" -> getFavouritesFromDb()
                 else -> emptyList()
             }
 
@@ -243,8 +238,8 @@ class MyMediaService : MediaLibraryService() {
         }
     }
 
-    fun getVideosFromDb(): List<MediaItem> {
-        return database.albumsDao().getAllVideos().map {
+    fun getFavouritesFromDb(): List<MediaItem> {
+        return database.albumsDao().getAllFavourites().map {
             MediaItem.Builder()
                 .setMediaId(it.id)
                 .setUri(it.streamUrl)
@@ -261,23 +256,6 @@ class MyMediaService : MediaLibraryService() {
         }
     }
 
-    fun getAudiosFromDb(): List<MediaItem> {
-        return database.albumsDao().getAllAudios().map {
-            MediaItem.Builder()
-                .setMediaId(it.id)
-                .setUri(it.streamUrl)
-                .setMediaMetadata(
-                    MediaMetadata.Builder()
-                        .setTitle(it.title)
-                        .setArtist(it.streamUrl)
-                        .setIsBrowsable(false)
-                        .setArtworkUri(defaultArtWorkUri)
-                        .setIsPlayable(true)
-                        .build()
-                )
-                .build()
-        }
-    }
 
     fun isVideoUrl(url: String?): Boolean {
         if (url.isNullOrBlank()) return false
@@ -461,7 +439,6 @@ class MyMediaService : MediaLibraryService() {
                                         track,
                                         "c62a1d89e34fa71897a4bb4df15e8510"
                                     )
-                                    Log.d("Metadata", "Album -> ${album?.imageUrl}")
                                     updateMediaItem(
                                         title = track,
                                         artist = artist,
@@ -719,7 +696,6 @@ class MyMediaService : MediaLibraryService() {
             return TrackAlbumModel(
                 id = response.track?.mbid ?: UUID.randomUUID().toString(),
                 title = title,
-                artist = artist,
                 imageUrl = imageUrl.toString(),
                 streamUrl = ""
             )
@@ -745,7 +721,6 @@ class MyMediaService : MediaLibraryService() {
             return TrackAlbumModel(
                 id = UUID.randomUUID().toString(),
                 title = track,
-                artist = artist,
                 imageUrl = defaultArtWorkUri.toString(),
                 streamUrl = ""
             )
@@ -799,9 +774,6 @@ class MyMediaService : MediaLibraryService() {
 
 
     companion object {
-        const val RESULT_SUCCESS = 0
-        const val RESULT_ERROR = -1
-
         @Volatile
         var isRunning = false
     }

@@ -32,31 +32,42 @@ class AddUrlBottomSheet(
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            binding.etUrl.textCursorDrawable = ContextCompat.getDrawable(requireContext(), R.drawable.cursor_color)
+            binding.etUrl.textCursorDrawable =
+                ContextCompat.getDrawable(requireContext(), R.drawable.cursor_color)
         }
+
+        initOptionalArguments()
 
         binding.etUrl.postDelayed({
             binding.etUrl.requestFocus()
-            val imm = requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            val imm =
+                requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
             imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
         }, 200)
 
         binding.btnSaveUrl.setOnClickListener {
             val title = binding.etTitle.text.toString().trim()
             val url = binding.etUrl.text.toString().trim()
-            if(title.isEmpty()){
+            if (title.isEmpty()) {
                 Toast.makeText(requireContext(), "Please enter a title", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
-            }
-           else if (url.isNotEmpty() && Patterns.WEB_URL.matcher(url).matches()) {
-                onSave(title,url)
+            } else if (url.isNotEmpty() && Patterns.WEB_URL.matcher(url).matches()) {
+                onSave(title, url)
                 dismiss()
             } else {
-                Toast.makeText(requireContext(), "Please enter a valid URL", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "Please enter a valid URL", Toast.LENGTH_SHORT)
+                    .show()
             }
         }
         binding.btnClose.setOnClickListener {
             dismissAllowingStateLoss()
+        }
+    }
+
+    private fun initOptionalArguments() = with(binding) {
+        arguments?.let { args ->
+            etTitle.setText(args.getString(TITLE_TAG).toString())
+            etUrl.setText(args.getString(URL_TAG).toString())
         }
     }
 
@@ -79,5 +90,11 @@ class AddUrlBottomSheet(
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+
+    companion object {
+        const val TITLE_TAG = "title"
+        const val URL_TAG = "url"
     }
 }

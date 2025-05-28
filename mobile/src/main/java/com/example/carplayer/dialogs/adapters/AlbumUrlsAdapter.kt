@@ -4,10 +4,12 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.PopupMenu
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.example.carplayer.R
 import com.example.carplayer.databinding.ItemAlbumUrlBinding
 import com.example.carplayer.shared.database.CarPlayerDatabase
 import com.example.carplayer.shared.models.TrackAlbumModel
@@ -15,7 +17,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-class AlbumUrlsAdapter(val onPlayClick: (album: TrackAlbumModel, index:Int) -> Unit) :
+class AlbumUrlsAdapter(
+    val onPlayClick: (album: TrackAlbumModel, index: Int) -> Unit,
+    val onEditClick: (album: TrackAlbumModel) -> Unit
+) :
     ListAdapter<TrackAlbumModel, AlbumUrlsAdapter.AlbumUrlViewHolder>(object :
         DiffUtil.ItemCallback<TrackAlbumModel>() {
         override fun areItemsTheSame(
@@ -30,7 +35,7 @@ class AlbumUrlsAdapter(val onPlayClick: (album: TrackAlbumModel, index:Int) -> U
             oldItem: TrackAlbumModel,
             newItem: TrackAlbumModel
         ): Boolean {
-            return oldItem.streamUrl == newItem.streamUrl && oldItem.isPlaying == newItem.isPlaying
+            return oldItem.streamUrl == newItem.streamUrl && oldItem.isPlaying == newItem.isPlaying && oldItem.isFavourite == newItem.isFavourite
         }
 
     }), ItemTouchHelperAdapter {
@@ -72,7 +77,7 @@ class AlbumUrlsAdapter(val onPlayClick: (album: TrackAlbumModel, index:Int) -> U
 
             tvUrl.text = album.streamUrl
 
-            tvTitle.text = if(album.title.isEmpty()) "Unknown" else album.title
+            tvTitle.text = if (album.title.isEmpty()) "Unknown" else album.title
 
 
             if (album.isPlaying) {
@@ -86,11 +91,23 @@ class AlbumUrlsAdapter(val onPlayClick: (album: TrackAlbumModel, index:Int) -> U
                 pbLoading.visibility = View.GONE
             }
 
-            btnDelete.setOnClickListener {
+            if (album.isFavourite) btnFav.setImageResource(R.drawable.ic_fav) else btnFav.setImageResource(
+                R.drawable.ic_fav_outlined
+            )
+
+            btnFav.setOnClickListener {
                 CoroutineScope(Dispatchers.IO).launch {
-                    CarPlayerDatabase.getInstance(binding.root.context).albumsDao().delete(album)
+                    CarPlayerDatabase.getInstance(binding.root.context).albumsDao()
+                        .updateFavourite(
+                            isFavourite = if (album.isFavourite) 0 else 1,
+                            streamUrl = album.streamUrl
+                        )
                 }
             }
+
+            btnOptions.setOnClickListener { showEditDeletePopupMenu(it, album) }
+
+
 
             btnPlay.setOnClickListener {
                 root.performClick()
@@ -103,11 +120,35 @@ class AlbumUrlsAdapter(val onPlayClick: (album: TrackAlbumModel, index:Int) -> U
                 CoroutineScope(Dispatchers.IO).launch {
                     CarPlayerDatabase.getInstance(binding.root.context).albumsDao().resetPlaying()
                 }
-                onPlayClick.invoke(album,bindingAdapterPosition)
+                onPlayClick.invoke(album, bindingAdapterPosition)
             }
         }
-    }
 
+        private fun showEditDeletePopupMenu(anchor: View, album: TrackAlbumModel) {
+            val popup = PopupMenu(anchor.context, anchor)
+            popup.menuInflater.inflate(R.menu.edit_delete_menu, popup.menu)
+
+            popup.setOnMenuItemClickListener {
+                when (it.itemId) {
+                    R.id.menu_edit -> {
+                        onEditClick.invoke(album)
+                        true
+                    }
+
+                    R.id.menu_delete -> {
+                        CoroutineScope(Dispatchers.IO).launch {
+                            CarPlayerDatabase.getInstance(binding.root.context).albumsDao()
+                                .delete(album)
+                        }
+                        true
+                    }
+
+                    else -> false
+                }
+            }
+            popup.show()
+        }
+    }
 
 
 }

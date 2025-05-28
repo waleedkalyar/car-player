@@ -6,6 +6,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.Update
 import com.example.carplayer.shared.models.TrackAlbumModel
 import kotlinx.coroutines.flow.Flow
 
@@ -17,17 +18,12 @@ interface AlbumsDao {
     @Query("SELECT * FROM albums")
     fun listenAll(): Flow<List<TrackAlbumModel>>
 
-    @Query("SELECT * FROM albums WHERE isVideo = 1")
-    fun listenAllVideos(): Flow<List<TrackAlbumModel>>
+    @Query("SELECT * FROM albums WHERE isFavourite = 1")
+    fun listenAllFavourites(): Flow<List<TrackAlbumModel>>
 
-    @Query("SELECT * FROM albums WHERE isVideo = 1")
-    fun getAllVideos(): List<TrackAlbumModel>
+    @Query("SELECT * FROM albums WHERE isFavourite = 1")
+    fun getAllFavourites(): List<TrackAlbumModel>
 
-    @Query("SELECT * FROM albums WHERE isVideo = 0")
-    fun listenAllAudios(): Flow<List<TrackAlbumModel>>
-
-    @Query("SELECT * FROM albums WHERE isVideo = 0")
-    fun getAllAudios(): List<TrackAlbumModel>
 
     @Query("UPDATE albums SET isPlaying = 0")
     suspend fun resetPlaying()
@@ -36,17 +32,17 @@ interface AlbumsDao {
     fun getItemById(id: String): TrackAlbumModel?
 
 
-    @Query("UPDATE albums SET isPlaying = 1,title = :title, artist =:artist, imageUrl = :artwork  WHERE streamUrl = :streamUrl")
+    @Query("UPDATE albums SET isPlaying = 1,title = :title  WHERE streamUrl = :streamUrl")
     suspend fun updatePlayingByStreamUrl(
-        streamUrl: String, title: String,
-        artist: String,
-        artwork: String
-    )
+        streamUrl: String, title: String)
 
     @Query("UPDATE albums SET isPlaying = 1 WHERE streamUrl = :streamUrl")
     suspend fun updatePlayingOnlyByStreamUrl(
         streamUrl: String,
     )
+
+    @Query("UPDATE albums SET isFavourite = :isFavourite WHERE streamUrl = :streamUrl")
+    suspend fun updateFavourite(isFavourite: Int, streamUrl: String)
 
 
     @Transaction
@@ -66,20 +62,20 @@ interface AlbumsDao {
     }
 
     suspend fun listenAllWithConditions(
-        isVideo: Boolean = false,
-        isAudio: Boolean = false,
+        isFavourite: Boolean = false,
         all: Boolean = true
     ): Flow<List<TrackAlbumModel>> {
-        return if (isVideo) {
-            listenAllVideos()
-        } else if (isAudio) {
-            listenAllAudios()
+        return if (isFavourite) {
+            listenAllFavourites()
         } else listenAll()
     }
 
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insertAll(vararg album: TrackAlbumModel)
+
+    @Update(onConflict = OnConflictStrategy.REPLACE)
+    fun updateAlbum(album: TrackAlbumModel)
 
     @Delete
     fun delete(album: TrackAlbumModel)

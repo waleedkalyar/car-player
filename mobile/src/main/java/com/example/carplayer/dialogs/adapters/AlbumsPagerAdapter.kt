@@ -6,7 +6,7 @@ import androidx.viewpager2.adapter.FragmentStateAdapter
 import com.example.carplayer.fragments.UrlPageFragment
 
 enum class TracMediaType {
-    ALL, AUDIO, VIDEO
+    ALL, FAVOURITES
 }
 
 
@@ -19,10 +19,7 @@ class AlbumsPagerAdapter(
         UrlPageFragment.newInstance(TracMediaType.ALL,).apply {
             setCallback(onTrackSelect)
         },
-        UrlPageFragment.newInstance(TracMediaType.VIDEO).apply {
-            setCallback(onTrackSelect)
-        },
-        UrlPageFragment.newInstance(TracMediaType.AUDIO).apply {
+        UrlPageFragment.newInstance(TracMediaType.FAVOURITES).apply {
             setCallback(onTrackSelect)
         },
     )

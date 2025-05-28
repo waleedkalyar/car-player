@@ -9,9 +9,8 @@ import kotlinx.serialization.Serializable
 data class TrackAlbumModel(
     @PrimaryKey var id: String,
     var title: String = "Unknown",
-    var artist: String = "Unknown",
-    var imageUrl: String,
     var streamUrl: String,
+    var imageUrl: String,
     var isPlaying: Boolean = false,
-    var isVideo: Boolean = false,
+    var isFavourite: Boolean = false,
 )

@@ -6,7 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.example.carplayer.shared.models.TrackAlbumModel
 
-@Database(entities = [TrackAlbumModel::class], version = 4)
+@Database(entities = [TrackAlbumModel::class], version = 5)
 abstract class CarPlayerDatabase : RoomDatabase() {
     abstract fun albumsDao() : AlbumsDao
 

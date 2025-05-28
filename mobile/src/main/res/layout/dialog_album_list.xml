@@ -20,8 +20,8 @@
     <!-- Back Button -->
     <ImageButton
         android:id="@+id/btnBack"
-        android:layout_width="36dp"
-        android:layout_height="36dp"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
         android:layout_marginTop="16dp"
         android:layout_marginStart="16dp"
         android:contentDescription="@string/back"
@@ -44,15 +44,15 @@
         android:textStyle="bold"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="@id/btnBack"
-        app:layout_constraintEnd_toEndOf="@id/btnAddToPlaylist"
+        app:layout_constraintEnd_toEndOf="@id/btnMore"
         app:layout_constraintBottom_toBottomOf="@id/btnAddToPlaylist"
         android:layout_marginTop="16dp" />
 
     <!-- Add to Playlist Button -->
     <ImageButton
         android:id="@+id/btnAddToPlaylist"
-        android:layout_width="36dp"
-        android:layout_height="36dp"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
         android:contentDescription="@string/add_to_playlist"
         android:src="@drawable/ic_add"
         android:scaleType="fitXY"
@@ -64,8 +64,8 @@
         app:tint="@android:color/white" />
         <ImageButton
             android:id="@+id/btnMore"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
             android:contentDescription="@string/add_to_playlist"
             android:src="@drawable/ic_more"
             android:scaleType="fitXY"
@@ -83,6 +83,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         app:tabMode="fixed"
+        app:tabIconTint="@color/white"
         app:tabIndicatorFullWidth="true"
         app:tabSelectedTextColor="@color/white"
         app:tabIndicatorColor="@color/white"

@@ -33,7 +33,6 @@ class MediaTabScreen(
 
                 val item = GridItem.Builder()
                     .setTitle(album.title)
-                    .setText(album.artist)
                     .setImage(icon, GridItem.IMAGE_TYPE_LARGE)
                     .setOnClickListener {
                         mediaController?.let { controller ->

@@ -15,12 +15,10 @@ import java.io.FileOutputStream
 import java.io.InputStreamReader
 import java.io.OutputStream
 
-private const val CSV_HEADER = "id,title,streamUrl"
-private const val EXPORT_FILE_NAME = "albums_export.csv"
+
 
 fun AlbumsDao.exportAlbumsToCsv(context: Context): Boolean {
     val fileName = "albums_export.csv"
-
     return try {
         val outputStream: OutputStream? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             // Use MediaStore for API 29+
@@ -82,11 +80,10 @@ fun AlbumsDao.importAlbumsFromCsv(context: Context, uri: Uri): Boolean {
                             TrackAlbumModel(
                                 id = tokens[0],
                                 title = tokens[1],
-                                artist = "",          // Fill as needed
-                                imageUrl = "",         // Fill as needed
+                                        // Fill as needed
                                 streamUrl = tokens[2],
                                 isPlaying = false,
-                                isVideo = false
+                                imageUrl = ""
                             )
                         )
                     }

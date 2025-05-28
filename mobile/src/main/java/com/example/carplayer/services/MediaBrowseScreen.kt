@@ -33,20 +33,16 @@ class MediaBrowseScreen : Screen {
         this.albumsDao = albumsDao
         this.mediaController = mediaController
         this.allItems = listOf<TrackAlbumModel>()
-        this.videoItems = listOf<TrackAlbumModel>()
-        this.audioItems = listOf<TrackAlbumModel>()
+        this.favouriteItems = listOf<TrackAlbumModel>()
         CoroutineScope(Dispatchers.Main).launch {
             allItems = albumsDao.listenAll().first()
-            videoItems = albumsDao.listenAllVideos().first()
-            audioItems = albumsDao.listenAllAudios().first()
-
+            favouriteItems = albumsDao.listenAllFavourites().first()
             invalidate() // Refresh the template after data is loaded
         }
     }
 
     private var allItems: List<TrackAlbumModel>
-    private var videoItems: List<TrackAlbumModel>
-    private var audioItems: List<TrackAlbumModel>
+    private var favouriteItems: List<TrackAlbumModel>
     private var currentTab = "ALL"
 
 
@@ -96,8 +92,7 @@ class MediaBrowseScreen : Screen {
 
     private fun getMediaItemsForTab(): List<TrackAlbumModel> {
         return when (currentTab) {
-            "VIDEOS" -> videoItems
-            "AUDIOS" -> audioItems
+            "Favourites" -> favouriteItems
             else -> allItems
         }
     }
