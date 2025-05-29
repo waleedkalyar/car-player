@@ -1,7 +1,17 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
-    <style name="Base.Theme.CarPlayer" parent="Theme.Material3.DayNight.NoActionBar">
+    <style name="Base.Theme.CarPlayer" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <!-- Customize your dark theme here. -->
         <!-- <item name="colorPrimary">@color/my_dark_primary</item> -->
+    </style>
+
+
+    <style name="Theme.CarPlayer" parent="Base.Theme.CarPlayer" />
+
+    <!-- Use this fallback for pre-Android 12 -->
+    <style name="Theme.MyApp.Splash" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/red</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/black</item>
     </style>
 </resources>
