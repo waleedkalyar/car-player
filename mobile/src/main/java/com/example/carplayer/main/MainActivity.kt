@@ -14,6 +14,7 @@ import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.os.Build
 import android.os.Bundle
+import android.preference.PreferenceManager
 import android.util.Log
 import android.view.View
 import android.widget.TextView
@@ -44,12 +45,16 @@ import com.example.carplayer.R
 import com.example.carplayer.browser.BrowserActivity
 import com.example.carplayer.databinding.ActivityMainBinding
 import com.example.carplayer.databinding.CustomPlayerControllerBinding
+import com.example.carplayer.dialogs.AcknowledgmentDialogFragment
 import com.example.carplayer.dialogs.AlbumListDialogFragment
 import com.example.carplayer.shared.services.MyMediaService
+import com.example.carplayer.utils.launchTrackInMusicApp
 import com.google.common.util.concurrent.ListenableFuture
 import jp.wasabeef.blurry.Blurry
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.core.content.edit
+import com.example.carplayer.shared.database.CarPlayerDatabase
 
 
 class MainActivity : AppCompatActivity() {
@@ -110,24 +115,41 @@ class MainActivity : AppCompatActivity() {
         }
 
 
-        initViews()
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            Log.d("MediaIntent", "current pkg activity -> ${MainActivity::class.java.packageName}")
-        }
-
-
-        lifecycleScope.launch {
-            delay(2500L)
-            checkAndRequestBluetoothPermissions()
+        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+        val hasAccepted = prefs.getBoolean("acknowledgment_accepted", false)
+        if (!hasAccepted) {
+            Log.d("MainHome", "onCreate: fragment is created and shown")
+            AcknowledgmentDialogFragment {
+                  prefs.edit { putBoolean("acknowledgment_accepted", true) }
+                initViews()
+                lifecycleScope.launch {
+                    delay(2500L)
+                    checkAndRequestBluetoothPermissions()
+                }
+            }.show(supportFragmentManager, "AckDialog")
+        }else {
+            initViews()
+            lifecycleScope.launch {
+                delay(2500L)
+                checkAndRequestBluetoothPermissions()
+            }
         }
 
 
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (!MyMediaService.Companion.isRunning && CarPlayerDatabase.getInstance(this).albumsDao().getAll().isNotEmpty()) {
+            startForegroundService(serviceIntent)
+        }
+    }
+
+
+
     fun initViews() {
         // Start MediaService if not already running
-        if (!MyMediaService.Companion.isRunning) {
+        if (!MyMediaService.Companion.isRunning && CarPlayerDatabase.getInstance(this).albumsDao().getAll().isNotEmpty()) {
 
             startForegroundService(serviceIntent)
         }
@@ -155,6 +177,7 @@ class MainActivity : AppCompatActivity() {
                 show(supportFragmentManager, "albums")
             }
         }
+
 
 //        btnBrowser.setOnClickListener {
 //            Intent(this@MainActivity, WebViewPhoneActivity::class.java).apply {
@@ -394,10 +417,19 @@ class MainActivity : AppCompatActivity() {
         val artworkUri = metadata.artworkUri
 
 
-       val titleText = findViewById<TextView>(R.id.track_title)
+        btnMusicLauncher.setOnClickListener {
+            if (title == null || artist == null) return@setOnClickListener
+            this@MainActivity.launchTrackInMusicApp(
+                artist = artist.toString(),
+                track = title.toString()
+            )
+        }
+
+
+        val titleText = findViewById<TextView>(R.id.track_title)
         val artistText = findViewById<TextView>(R.id.track_artist)
 
-        if(title?.contains(" - ") == false){
+        if (title?.contains(" - ") == false) {
             titleText.text = title
             artistText.text = artist
         }
@@ -465,7 +497,7 @@ class MainActivity : AppCompatActivity() {
 
 
         // Show ImageView only if width is 720dp or more
-        if (widthDp >= 720 && ! mainViewModel.isCurrentVideo) {
+        if (widthDp >= 720 && !mainViewModel.isCurrentVideo) {
             albumImage.visibility = View.VISIBLE
             playerView.setBackgroundColor(Color.TRANSPARENT)
             // playerView.videoSurfaceView?.visibility = View.INVISIBLE
@@ -488,7 +520,7 @@ class MainActivity : AppCompatActivity() {
         // Calculate width in dp (density-independent pixels)
         val widthDp = displayMetrics.widthPixels / displayMetrics.density
 
-        if (widthDp >= 720 && ! mainViewModel.isCurrentVideo) {
+        if (widthDp >= 720 && !mainViewModel.isCurrentVideo) {
             playerView.artworkDisplayMode = PlayerView.ARTWORK_DISPLAY_MODE_OFF
             playerView.defaultArtwork = Color.TRANSPARENT.toDrawable()
         } else {
@@ -523,7 +555,8 @@ class MainActivity : AppCompatActivity() {
         if (isLive) {
             durationTextView.text = "LIVE"
             durationTextView.setTextColor(Color.WHITE)
-            durationTextView.background = ContextCompat.getDrawable(this, R.drawable.live_background)
+            durationTextView.background =
+                ContextCompat.getDrawable(this, R.drawable.live_background)
             durationTextView.setPadding(12, 4, 12, 4) // Optional: Add some padding
         } else {
             val durationMs = player.duration
@@ -535,7 +568,6 @@ class MainActivity : AppCompatActivity() {
             durationTextView.setPadding(0, 0, 0, 0)
         }
     }
-
 
 
 }

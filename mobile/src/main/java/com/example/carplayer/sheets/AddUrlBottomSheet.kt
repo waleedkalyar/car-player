@@ -16,7 +16,7 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 
 class AddUrlBottomSheet(
-    private val onSave: (title: String, url: String) -> Unit
+    private val onSave: (title: String, url: String, playBoxUrl: String) -> Unit
 ) : BottomSheetDialogFragment() {
 
     private var _binding: BottomSheetAddUrlBinding? = null
@@ -48,15 +48,23 @@ class AddUrlBottomSheet(
         binding.btnSaveUrl.setOnClickListener {
             val title = binding.etTitle.text.toString().trim()
             val url = binding.etUrl.text.toString().trim()
+            val playlistBoxUrl = binding.etPlaylistBoxUrl.text.toString().trim()
             if (title.isEmpty()) {
                 Toast.makeText(requireContext(), "Please enter a title", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
-            } else if (url.isNotEmpty() && Patterns.WEB_URL.matcher(url).matches()) {
-                onSave(title, url)
-                dismiss()
-            } else {
+            } else if (url.isEmpty() && !Patterns.WEB_URL.matcher(url).matches()) {
                 Toast.makeText(requireContext(), "Please enter a valid URL", Toast.LENGTH_SHORT)
                     .show()
+            } else if (playlistBoxUrl.isEmpty() && !Patterns.WEB_URL.matcher(playlistBoxUrl)
+                    .matches()
+            ) {
+                Toast.makeText(requireContext(), "Please enter a valid box URL", Toast.LENGTH_SHORT)
+                    .show()
+            } else if (url.isNotEmpty() && Patterns.WEB_URL.matcher(url).matches()) {
+                onSave(title, url, playlistBoxUrl)
+                dismiss()
+            } else {
+
             }
         }
         binding.btnClose.setOnClickListener {
@@ -68,6 +76,8 @@ class AddUrlBottomSheet(
         arguments?.let { args ->
             etTitle.setText(args.getString(TITLE_TAG).toString())
             etUrl.setText(args.getString(URL_TAG).toString())
+            if (args.getString(BOX_URL_TAG).toString().isNotEmpty())
+                etPlaylistBoxUrl.setText(args.getString(BOX_URL_TAG).toString())
         }
     }
 
@@ -96,5 +106,7 @@ class AddUrlBottomSheet(
     companion object {
         const val TITLE_TAG = "title"
         const val URL_TAG = "url"
+        const val BOX_URL_TAG = "box-url"
+
     }
 }

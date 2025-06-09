@@ -136,7 +136,7 @@ class AlbumListDialogFragment : BottomSheetDialogFragment() {
         }
 
         binding.btnAddToPlaylist.setOnClickListener {
-            val bottomSheet = AddUrlBottomSheet { title, url ->
+            val bottomSheet = AddUrlBottomSheet { title, url, playBoxUrl ->
                 if (Patterns.WEB_URL.matcher(url).matches()) {
                     // Toast.makeText(context, "Added URL: $url", Toast.LENGTH_SHORT).show()
                     requireActivity().showLoadingDialog()
@@ -148,13 +148,17 @@ class AlbumListDialogFragment : BottomSheetDialogFragment() {
                                 isVideo = true
                             }
 
+                            val currentMax =  CarPlayerDatabase.getInstance(requireContext()).albumsDao().getMaxChannelNumber() ?: 0
+
                             CarPlayerDatabase.getInstance(requireContext()).albumsDao().insertAll(
                                 TrackAlbumModel(
                                     // ✅ Must use your Room-safe entity, not TrackAlbumModel
                                     id = UUID.randomUUID().toString(),
                                     title = title,
                                     streamUrl = url,
-                                    imageUrl = ""
+                                    imageUrl = "",
+                                    playBoxUrl = playBoxUrl,
+                                    channelNumber = currentMax+1
                                 )
                             )
 

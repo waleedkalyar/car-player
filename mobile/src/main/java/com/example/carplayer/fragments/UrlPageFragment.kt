@@ -1,5 +1,7 @@
 package com.example.carplayer.fragments
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.util.Patterns
@@ -27,6 +29,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
+import androidx.core.net.toUri
 
 class UrlPageFragment() : Fragment() {
     var _binding: FragmentUrlPageBinding? = null
@@ -69,7 +72,7 @@ class UrlPageFragment() : Fragment() {
             //val index = mediaController.mediaItems.indexOfFirst { it.mediaMetadata.mediaUri.toString() == yourUrl }
             onTrackSelect?.invoke(album.streamUrl)
         }, onEditClick = { album ->
-            val bottomSheet = AddUrlBottomSheet { title, url ->
+            val bottomSheet = AddUrlBottomSheet { title, url, boxUrl ->
                 if (Patterns.WEB_URL.matcher(url).matches()) {
                     // Toast.makeText(context, "Added URL: $url", Toast.LENGTH_SHORT).show()
                     requireActivity().showLoadingDialog()
@@ -78,6 +81,7 @@ class UrlPageFragment() : Fragment() {
                             Log.d("AlbumsList", "onViewCreated: extension -> $it")
                             album.streamUrl = url
                             album.title = title
+                            album.playBoxUrl = boxUrl
 
                             CarPlayerDatabase.getInstance(requireContext()).albumsDao()
                                 .updateAlbum(album)
@@ -101,9 +105,14 @@ class UrlPageFragment() : Fragment() {
             }
             bottomSheet.arguments = bundleOf(
                 AddUrlBottomSheet.TITLE_TAG to album.title,
-                AddUrlBottomSheet.URL_TAG to album.streamUrl
+                AddUrlBottomSheet.URL_TAG to album.streamUrl,
+                AddUrlBottomSheet.BOX_URL_TAG to album.playBoxUrl
             )
             bottomSheet.show(parentFragmentManager, "EditUrlBottomSheet")
+        }, onOpenLinkClick = { album ->
+            Intent(Intent.ACTION_VIEW, album.playBoxUrl?.toUri()).apply {
+                startActivity(this)
+            }
         })
         rvAlbums.adapter = adapter
         val callback = SimpleItemTouchHelperCallback(adapter)

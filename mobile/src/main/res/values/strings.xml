@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">CarPlayer</string>
+    <string name="app_name">MyCarPlayer</string>
     <string name="rewind">Rewind</string>
     <string name="play_pause">Play/Pause</string>
     <string name="fast_forward">Fast Forward</string>
@@ -13,4 +13,12 @@
     <string name="go">Go</string>
     <string name="search_or_type_a_url">Search or type a URL</string>
     <string name="title">Title</string>
+    <string name="agree_btn_text">By clicking this box and using this application, you acknowledge and assume all risks, and you agree not to hold any party liable for damages, losses, consequences, or any outcome resulting from its use. If you do not agree with these terms, uninstall the application immediately. For further details, please refer to our full terms of use on our website.</string>
+    <string name="risk_title">User Acknowledgment and Assumption of Risk</string>
+    <string name="risk_message">By using this application, you acknowledge and agree that you do so entirely at your own risk. The application is provided on an \"as is\" and \"as available\" basis, without any warranties, express or implied, including but not limited to performance, accuracy, or fitness for a particular purpose.\nYou further agree that the developers, providers, and any affiliated parties shall not be held responsible for any consequences, damages, losses, or liabilities arising from your use of the application. You assume full responsibility for your actions while using the application and accept all associated risks, including but not limited to technical issues, data loss, or other unintended outcomes.\nAdditionally, you agree to use this application responsibly and ensure that it does not distract you from important tasks, surroundings, or responsibilities. You must always observe safety while using the application and follow all applicable guidelines, laws, precautions, and best practices. </string>
+    <string name="about_us">About Us</string>
+    <string name="terms_of_use">Terms of Use</string>
+    <string name="proceed">Proceed</string>
+    <string name="playlist_box">Official website/playlist (URL)</string>
+    <string name="app_slogan">Your Car Audio Streaming Player</string>
 </resources>

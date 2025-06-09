@@ -12,5 +12,9 @@
         <item name="android:windowSoftInputMode">adjustResize</item>
     </style>
 
+    <style name="FullScreenDialog" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowFullscreen">true</item>
+    </style>
 
 </resources>

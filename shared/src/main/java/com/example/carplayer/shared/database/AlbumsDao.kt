@@ -81,4 +81,13 @@ interface AlbumsDao {
     fun delete(album: TrackAlbumModel)
 
 
+    @Query("SELECT MAX(channelNumber) FROM albums")
+    fun getMaxChannelNumber(): Int?
+
+    @Query("SELECT * FROM albums WHERE streamUrl = :streamUrl LIMIT 1")
+    fun getItemByStreamUrl(streamUrl: String): TrackAlbumModel?
+
+    @Query("SELECT * FROM albums WHERE channelNumber = :channel LIMIT 1")
+    fun getItemByChannel(channel: Int): TrackAlbumModel?
+
 }

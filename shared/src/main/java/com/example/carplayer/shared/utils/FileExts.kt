@@ -41,17 +41,15 @@ fun AlbumsDao.exportAlbumsToCsv(context: Context): Boolean {
         }
 
         outputStream?.bufferedWriter().use { writer ->
-            writer?.appendLine("id,title,streamUrl")
+            writer?.appendLine("id,channel,title,streamUrl,playBoxUrl")
             getAll().forEach { album ->
                 writer?.appendLine(
                     listOf(
                         album.id,
+                        album.channelNumber.toString(),
                         album.title,
-                       // album.artist,
-                       // album.imageUrl,
                         album.streamUrl,
-                       // album.isPlaying.toString(),
-                       // album.isVideo.toString()
+                        album.playBoxUrl.toString(),
                     ).joinToString(",") { it.csvEscape() }
                 )
             }
@@ -79,9 +77,11 @@ fun AlbumsDao.importAlbumsFromCsv(context: Context, uri: Uri): Boolean {
                         albums.add(
                             TrackAlbumModel(
                                 id = tokens[0],
-                                title = tokens[1],
+                                channelNumber =tokens[1].toIntOrNull() ?: 0,//getMaxChannelNumber() ?: 0, //
+                                title = tokens[2],
                                         // Fill as needed
-                                streamUrl = tokens[2],
+                                streamUrl = tokens[3],
+                                playBoxUrl = tokens[4],
                                 isPlaying = false,
                                 imageUrl = ""
                             )

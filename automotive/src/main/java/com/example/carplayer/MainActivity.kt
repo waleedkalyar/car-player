@@ -23,6 +23,7 @@ import android.os.Build
 
 import androidx.media3.common.MediaItem
 import android.os.Bundle
+import android.preference.PreferenceManager
 import android.util.Log
 import android.view.Surface
 import android.view.View
@@ -69,6 +70,7 @@ import com.example.carplayer.shared.utils.importAlbumsFromCsv
 import com.example.carplayer.utils.toBitmap
 import jp.wasabeef.blurry.Blurry
 import java.io.File
+import androidx.core.content.edit
 
 class MainActivity : AppCompatActivity() {
     private var _binding: ActivityMainBinding? = null
@@ -86,6 +88,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+
         _binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
@@ -94,11 +97,18 @@ class MainActivity : AppCompatActivity() {
             insets
         }
 
+
         initViews()
+
+
 
     }
 
     fun initViews() {
+
+
+
+
         // Start MediaService if not already running
         val serviceIntent = Intent(this, MyMediaService::class.java)
         startForegroundService(serviceIntent)

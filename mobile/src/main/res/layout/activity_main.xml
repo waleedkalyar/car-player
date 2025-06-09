@@ -93,6 +93,19 @@
         app:tint="@color/white" />
 
     <ImageButton
+        android:id="@+id/btnMusicLauncher"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:padding="8dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_margin="16dp"
+        android:scaleType="fitXY"
+        android:background="@drawable/bg_circle"
+        android:src="@drawable/ic_music_launcher"
+        app:tint="@color/white" />
+
+    <ImageButton
         android:id="@+id/btnBrowser"
         android:layout_width="34dp"
         android:layout_height="34dp"

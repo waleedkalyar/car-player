@@ -73,6 +73,12 @@ dependencies {
     // HLS support (adaptive streaming)
     implementation("androidx.media3:media3-exoplayer-hls:1.2.1")
 
+    // Google Casting
+    implementation("androidx.media3:media3-cast:1.2.1")
+    implementation("com.google.android.gms:play-services-cast-framework:21.4.0")
+
+
+
     implementation("androidx.core:core-ktx:1.13.0") // ensures coroutine support
 
     implementation("io.coil-kt:coil:2.4.0")

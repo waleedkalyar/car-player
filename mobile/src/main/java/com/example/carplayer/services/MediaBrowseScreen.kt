@@ -1,3 +1,5 @@
+import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.util.Log
 import androidx.car.app.CarContext
 import androidx.car.app.Screen
@@ -100,15 +102,16 @@ class MediaBrowseScreen : Screen {
 
     private fun createGridItemList(mediaItems: List<TrackAlbumModel>): ItemList {
         val builder = ItemList.Builder()
-
+        val bitmap = BitmapFactory.decodeResource(carContext.resources, R.drawable.default_album_art)
+        val iconCompat = IconCompat.createWithBitmap(bitmap)
+        val carIcon = CarIcon.Builder(iconCompat).build()
         for (album in mediaItems) {
+
             val gridItem = GridItem.Builder()
-                .setTitle(album.title)
+                .setTitle("CH-${album.channelNumber} ${album.title}")
                 .setText(album.streamUrl)
                 .setImage(
-                    CarIcon.Builder(
-                        IconCompat.createWithResource(carContext,R.drawable.default_album_art)//album.imageUrl
-                    ).build(),
+                    carIcon,
                     GridItem.IMAGE_TYPE_LARGE
                 )
                 .setOnClickListener {

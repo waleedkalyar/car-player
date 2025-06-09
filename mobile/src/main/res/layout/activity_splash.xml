@@ -9,6 +9,7 @@
     tools:context=".slpash.SplashActivity">
 
     <ImageView
+        android:id="@+id/splash_logo"
         android:layout_width="170dp"
         android:layout_height="170dp"
         app:layout_constraintStart_toStartOf="parent"
@@ -16,5 +17,15 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         android:src="@mipmap/ic_launcher_player"/>
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@id/splash_logo"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:text="@string/app_slogan"
+        android:textColor="@color/white"
+        android:textSize="18sp"
+        android:layout_margin="12dp"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

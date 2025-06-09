@@ -1,5 +1,6 @@
 package com.example.carplayer.dialogs.adapters
 
+import android.annotation.SuppressLint
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -19,7 +20,8 @@ import kotlinx.coroutines.launch
 
 class AlbumUrlsAdapter(
     val onPlayClick: (album: TrackAlbumModel, index: Int) -> Unit,
-    val onEditClick: (album: TrackAlbumModel) -> Unit
+    val onEditClick: (album: TrackAlbumModel) -> Unit,
+    val onOpenLinkClick: (album: TrackAlbumModel) -> Unit,
 ) :
     ListAdapter<TrackAlbumModel, AlbumUrlsAdapter.AlbumUrlViewHolder>(object :
         DiffUtil.ItemCallback<TrackAlbumModel>() {
@@ -71,6 +73,7 @@ class AlbumUrlsAdapter(
     inner class AlbumUrlViewHolder(val binding: ItemAlbumUrlBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
+        @SuppressLint("SetTextI18n")
         fun bind(album: TrackAlbumModel) = with(binding) {
 
             Log.d("AlbumUrlsAdapter", "bind: -> ${album.title} is paying ->${album.isPlaying}")
@@ -78,6 +81,8 @@ class AlbumUrlsAdapter(
             tvUrl.text = album.streamUrl
 
             tvTitle.text = if (album.title.isEmpty()) "Unknown" else album.title
+
+            tvChannel.text = "Channel ${album.channelNumber}"
 
 
             if (album.isPlaying) {
@@ -111,6 +116,16 @@ class AlbumUrlsAdapter(
 
             btnPlay.setOnClickListener {
                 root.performClick()
+            }
+            if (album.playBoxUrl.isNullOrEmpty()) {
+                btnBoxLauncher.alpha = 0.3f
+            } else {
+                btnBoxLauncher.alpha = 1f
+            }
+
+            btnBoxLauncher.setOnClickListener {
+                if (album.playBoxUrl.isNullOrEmpty()) return@setOnClickListener
+                onOpenLinkClick.invoke(album)
             }
 
             root.setOnClickListener {

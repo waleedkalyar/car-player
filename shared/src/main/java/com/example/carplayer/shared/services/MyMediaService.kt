@@ -92,7 +92,7 @@ class MyMediaService : MediaLibraryService() {
                 .setMediaMetadata(rootMetadata)
                 .build()
 
-            return Futures.immediateFuture(LibraryResult.ofItem(rootItem,params))
+            return Futures.immediateFuture(LibraryResult.ofItem(rootItem, params))
         }
 
 
@@ -109,7 +109,8 @@ class MyMediaService : MediaLibraryService() {
                     createCategoryItem("all", "All Media"),
                     createCategoryItem("favourites", "Favourites"),
 
-                )
+                    )
+
                 "all" -> getMediaItemsFromDbAsGrid()
                 "favourites" -> getFavouritesFromDb()
                 else -> emptyList()
@@ -120,7 +121,7 @@ class MyMediaService : MediaLibraryService() {
 //                Log.d("MediaSession", "Item -> id=${it.mediaId}, uri=${it.localConfiguration?.uri}")
 //            }
 
-            return Futures.immediateFuture(LibraryResult.ofItemList(items,params))
+            return Futures.immediateFuture(LibraryResult.ofItemList(items, params))
         }
 
         override fun onSubscribe(
@@ -132,7 +133,8 @@ class MyMediaService : MediaLibraryService() {
             // Perform any logic for subscription, e.g., adding to a list of subscribers or managing the state
 
             // Return a success result
-            val result = LibraryResult.ofVoid(params)  // Using ofVoid to indicate successful subscription
+            val result =
+                LibraryResult.ofVoid(params)  // Using ofVoid to indicate successful subscription
             return Futures.immediateFuture(result)
         }
 
@@ -143,7 +145,8 @@ class MyMediaService : MediaLibraryService() {
         ): ListenableFuture<LibraryResult<Void>> {
             // Perform any logic for unsubscription, e.g., removing from a list of subscribers or clearing the state
             // Return a success result
-            val result = LibraryResult.ofVoid()  // Using ofVoid to indicate successful unsubscription
+            val result =
+                LibraryResult.ofVoid()  // Using ofVoid to indicate successful unsubscription
             return Futures.immediateFuture(result)
         }
 
@@ -157,49 +160,77 @@ class MyMediaService : MediaLibraryService() {
             startPositionMs: Long
         ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
 
-            mediaItems.forEach {
-                Log.d("MediaSession", "onSetMedia: Item -> id=${it.mediaId}, uri=${it.localConfiguration?.uri}")
-            }
+            val requestedMediaId = mediaItems.firstOrNull()?.mediaId.orEmpty()
+            Log.d("MediaSession", "onSetMedia: Requested mediaId = $requestedMediaId")
 
             val currentItems = player?.currentTimeline?.let {
                 (0 until it.windowCount).mapNotNull { i -> player?.getMediaItemAt(i) }
             } ?: emptyList()
 
-            val requestedMediaId = mediaItems.firstOrNull()?.mediaId.orEmpty()
+            // 👉 Handle Google Assistant voice command like "Play channel 5"
+            if (requestedMediaId.startsWith("channel_")) {
+                val channelNumber = requestedMediaId.removePrefix("channel_").toIntOrNull()
+                if (channelNumber != null) {
+                    val item = database.albumsDao().getItemByChannel(channelNumber)
+                    if (item != null) {
+                        val targetIndex = currentItems.indexOfFirst {
+                            it.localConfiguration?.uri.toString() == item.streamUrl
+                        }.takeIf { it >= 0 } ?: 0
 
-            // Attempt to find the matching item in DB
+                        val currentIndex = player?.currentMediaItemIndex ?: -1
+                        val currentlyPlayingUri =
+                            player?.currentMediaItem?.localConfiguration?.uri?.toString()
+
+                        if (currentlyPlayingUri != item.streamUrl || currentIndex != targetIndex) {
+                            Log.d("MediaSession", "Switching to channel $channelNumber")
+                            player?.seekTo(targetIndex, startPositionMs)
+                        } else {
+                            Log.d("MediaSession", "Already playing channel $channelNumber")
+                        }
+
+                        return Futures.immediateFuture(
+                            MediaSession.MediaItemsWithStartPosition(
+                                currentItems,
+                                targetIndex,
+                                startPositionMs
+                            )
+                        )
+                    }
+                }
+            }
+
+            // 🧠 Fallback: treat mediaId as database ID
             val item = database.albumsDao().getItemById(requestedMediaId)
-
             if (item != null) {
                 val targetIndex = currentItems.indexOfFirst {
                     it.localConfiguration?.uri.toString() == item.streamUrl
                 }.takeIf { it >= 0 } ?: 0
 
                 val currentIndex = player?.currentMediaItemIndex ?: -1
-                val currentlyPlayingUri = player?.currentMediaItem?.localConfiguration?.uri?.toString()
+                val currentlyPlayingUri =
+                    player?.currentMediaItem?.localConfiguration?.uri?.toString()
 
                 if (currentlyPlayingUri != item.streamUrl || currentIndex != targetIndex) {
-                    Log.d("MediaSession", "Seeking to index $targetIndex (was $currentIndex), streamUrl = ${item.streamUrl}")
+                    Log.d("MediaSession", "Seeking to index $targetIndex (was $currentIndex)")
                     player?.seekTo(targetIndex, startPositionMs)
                 } else {
-                    Log.d("MediaSession", "Already playing the requested item at correct index; skipping seekTo")
+                    Log.d("MediaSession", "Already playing the requested item at correct index")
                 }
 
                 return Futures.immediateFuture(
-                    MediaSession.MediaItemsWithStartPosition(currentItems, targetIndex, startPositionMs)
+                    MediaSession.MediaItemsWithStartPosition(
+                        currentItems,
+                        targetIndex,
+                        startPositionMs
+                    )
                 )
             }
 
-            // Default fallback
+            // 🚫 Default fallback
             return Futures.immediateFuture(
                 MediaSession.MediaItemsWithStartPosition(currentItems, 0, startPositionMs)
             )
         }
-
-
-
-
-
 
 
     }
@@ -218,12 +249,10 @@ class MyMediaService : MediaLibraryService() {
     }
 
 
-
-
     fun getMediaItemsFromDbAsGrid(): List<MediaItem> {
         return database.albumsDao().getAll().map {
             MediaItem.Builder()
-                .setMediaId(it.id)
+                .setMediaId("channel_${it.channelNumber}")
                 .setUri(it.streamUrl)
                 .setMediaMetadata(
                     MediaMetadata.Builder()
@@ -241,7 +270,7 @@ class MyMediaService : MediaLibraryService() {
     fun getFavouritesFromDb(): List<MediaItem> {
         return database.albumsDao().getAllFavourites().map {
             MediaItem.Builder()
-                .setMediaId(it.id)
+                .setMediaId("channel_${it.channelNumber}")
                 .setUri(it.streamUrl)
                 .setMediaMetadata(
                     MediaMetadata.Builder()
@@ -268,10 +297,6 @@ class MyMediaService : MediaLibraryService() {
         val normalizedUrl = url.lowercase().substringBefore("?") // Strip query params
         return videoExtensions.any { normalizedUrl.endsWith(it) }
     }
-
-
-
-
 
 
     @RequiresApi(Build.VERSION_CODES.S)
@@ -332,6 +357,7 @@ class MyMediaService : MediaLibraryService() {
             database
                 .apply {
                     albumsDao().listenAll().collect { items ->
+                        if (items.isEmpty()) return@collect
                         withContext(Dispatchers.Main) {
 
                             if (items.size != player?.mediaItemCount) {
@@ -341,7 +367,11 @@ class MyMediaService : MediaLibraryService() {
                                 )
 
                                 val currentUris = player?.currentTimeline?.let {
-                                    (0 until it.windowCount).mapNotNull { i -> player?.getMediaItemAt(i)?.localConfiguration?.uri?.toString() }
+                                    (0 until it.windowCount).mapNotNull { i ->
+                                        player?.getMediaItemAt(
+                                            i
+                                        )?.localConfiguration?.uri?.toString()
+                                    }
                                 } ?: emptyList()
 
                                 val newUris = items.map { it.streamUrl }
@@ -486,11 +516,13 @@ class MyMediaService : MediaLibraryService() {
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 super.onMediaItemTransition(mediaItem, reason)
-               var isVideo = isVideoUrl(mediaItem?.localConfiguration?.uri.toString())
+                var isVideo = isVideoUrl(mediaItem?.localConfiguration?.uri.toString())
                 CoroutineScope(Dispatchers.Main).launch {
                     updateMediaItem(
-                        title = mediaItem?.mediaMetadata?.title?.toString() ?: if (isVideo) "" else "Loading...",
-                        artist = mediaItem?.mediaMetadata?.artist?.toString() ?: if (isVideo) "" else "Loading...",
+                        title = mediaItem?.mediaMetadata?.title?.toString()
+                            ?: if (isVideo) "" else "Loading...",
+                        artist = mediaItem?.mediaMetadata?.artist?.toString()
+                            ?: if (isVideo) "" else "Loading...",
                         imageUrl = defaultArtWorkUri.toString()
                     )
                 }
@@ -564,12 +596,9 @@ class MyMediaService : MediaLibraryService() {
 //        mediaSession = MediaSession.Builder(this, player!!)
 //            .build()
 
-        mediaSession = MediaLibrarySession.Builder(this,player!!, sessionCallback)
+        mediaSession = MediaLibrarySession.Builder(this, player!!, sessionCallback)
             .setId("CarPlayerSession")
             .build()
-
-
-
 
 
         val intent = Intent().apply {
@@ -594,9 +623,6 @@ class MyMediaService : MediaLibraryService() {
     }
 
 
-
-
-
     suspend fun updateMediaItem(title: String, artist: String, imageUrl: String) {
         var index = player?.currentMediaItemIndex ?: 0
 
@@ -605,13 +631,32 @@ class MyMediaService : MediaLibraryService() {
         val safe = isImageSizeSafe(imageUrl)
         val artworkUri = if (safe) imageUrl.toUri() else defaultArtWorkUri
 
-        database.albumsDao().markOnlyOneAsPlaying(
-            player?.currentMediaItem?.localConfiguration?.uri?.toString()
-                .toString(),
-            title = title,
-            artist = artist,
-            artwork = artworkUri.toString()
+        val streamUrl = player?.currentMediaItem?.localConfiguration?.uri?.toString().orEmpty()
+
+        val album = database.albumsDao().getItemByStreamUrl(
+            streamUrl
         )
+
+        // Step 2: Only update if found
+        if (album != null) {
+            // Auto-assign channelNumber if it's missing or 0
+            val channelNumber = if (album.channelNumber == 0) {
+                (database.albumsDao().getMaxChannelNumber() ?: 0) + 1
+            } else album.channelNumber
+
+
+            database.albumsDao().markOnlyOneAsPlaying(
+                streamUrl = streamUrl,
+                title = title,
+                artist = artist,
+                artwork = artworkUri.toString(),
+            )
+
+           // database.albumsDao().updateAlbum(updatedAlbum)
+            //database.albumsDao().resetPlaying() // optional safety
+           // database.albumsDao().updatePlayingOnlyByStreamUrl(streamUrl)
+        }
+
 
 //        Log.d("Artwork", "updateMediaItem: url -> $artworkUri")
 //        val bitmpa = this.toImageBitmap(artworkUri.toString())
@@ -680,6 +725,7 @@ class MyMediaService : MediaLibraryService() {
         try {
             Log.d("FetchAlbumArt", "artist -> $artist, track -> $track")
             val response = lastFmApi.getTrackInfo(apiKey, artist, track)
+            // Log.d("FetchAlbumArt", "fetchAlbumArt: last fm resp -> ${response}")
             val images = response.track?.album?.image
             // Pick "extralarge" or the biggest one
             var imageUrl = images?.findLast { it.size == "large" || it.size == "mega" }?.url
